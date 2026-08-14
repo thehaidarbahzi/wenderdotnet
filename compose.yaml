@@ -1,0 +1,23 @@
+name: whatsapp-bbj
+services:
+  whatsapp:
+    image: docker.io/aldinokemal2104/go-whatsapp-web-multidevice
+    container_name: container-whatsapp
+    restart: always
+    ports:
+      - "${WHATSAPP_PORT:?error}:3000"
+    volumes:
+      - whatsapp:/app/storages
+    environment:
+      - APP_BASIC_AUTH=${WHATSAPP_AUTH_USERNAME:?error}:${WHATSAPP_AUTH_PASSWORD}
+      - APP_DEBUG=${WHATSAPP_ENABLE_DEBUG:?error}
+      - APP_OS=${WHATSAPP_DEVICE_NAME:?error}
+      - WHATSAPP_AUTO_MARK_READ=${WHATSAPP_ENABLE_AUTO_READ:?error}
+      - WHATSAPP_AUTO_DOWNLOAD_MEDIA=${WHATSAPP_ENABLE_AUTO_DOWNLOAD_MEDIA:?error}
+      - WHATSAPP_WEBHOOK=${WHATSAPP_WEBHOOK_URL:?error}
+      - WHATSAPP_WEBHOOK_SECRET=${WHATSAPP_WEBHOOK_SECRET}
+      - WHATSAPP_WEBHOOK_INSECURE_SKIP_VERIFY=${WHATSAPP_WEBHOOK_SKIP_HTTPS:?error}
+      - WHATSAPP_WEBHOOK_EVENTS=${WHATSAPP_WEBHOOK_EVENTS:?error}
+
+volumes:
+  whatsapp:

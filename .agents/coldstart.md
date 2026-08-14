@@ -11,8 +11,9 @@ Web app untuk **mengatur dan mengonfigurasi bot WhatsApp** — konsep menyerupai
 **Model arsitektur (final):**
 
 - **Repo ini = satu Next.js app** (App Router, TypeScript, Tailwind CSS, Supabase).
-- **Bot service = entitas eksternal**, dijalankan via **podman compose** (bukan docker), image terpisah — **tidak dibangun di repo ini**.
-- Next.js server action memanggil API bot via `BOT_API_URL` (HTTP `fetch`).
+- **Bot service = entitas eksternal**, dijalankan via **podman compose** (bukan docker), image `go-whatsapp-web-multidevice` (aldinokemal2104) — **tidak dibangun di repo ini**. API-nya di-dokumentasikan di `openapi.yaml` (root repo).
+- Next.js memanggil API bot via `BOT_API_URL` (HTTP `fetch`, Basic Auth).
+- Bot **tidak mengeksekusi rules** — ia hanya mengirim **webhook events** (message, message.ack, dll.) ke `WHATSAPP_WEBHOOK_URL`. **Rule engine (listen/auto-read/auto-reply) hidup di Next.js** (webhook receiver).
 - Supabase menangani: Auth (email + SSO Gmail), database, realtime.
 
 **Target pasar:** Indonesia/SEA dulu (UMKM + reseller), kemudian ekspansi global (developer) secara bertahap.
@@ -89,6 +90,21 @@ Web app untuk **mengatur dan mengonfigurasi bot WhatsApp** — konsep menyerupai
 - Feedback positif pada: kemudahan connect QR & konfigurasi rules.
 - ≥ 3 user menyatakan siap bayar (indikasi pricing Phase 2).
 
+### 2.8 Project Structure
+
+- using nextjs app router
+- 1 landing page consisting of: Hero CTA, short introduction of this project, 3 points of what is the main feature of this project not using card but with the left image right text of the title feature, short description of the feature and cta for learn more and each is reversed so first image is left and text right, second is reversed then last is reversed again, section of what the creator say about this project like kata sambutan from creator, section of subscribe to newsletter, then footer (navbar dan footer taruh di `(marketing)` layout — root layout hanya `html/body` + font)
+- 1 page untuk login/register nanti di buat layout full gambar di kiri form di kanan, route `/auth` (tab "Masuk" / "Daftar", tanpa navbar)
+- **Server actions tidak pernah didefinisikan di file frontend.** Semua fungsi `"use server"` (mutasi, panggilan ke bot, tulis DB) ditaruh di folder khusus, mis. `src/server/actions/*` (dibagi per domain: `devices.ts`, `rules.ts`, `logs.ts`, `auth.ts`, `newsletter.ts`). Frontend hanya memanggil method dari sana. Konsekuensi: file UI tidak mengandung `"use server"` sama sekali.
+
+---
+
+## 2.9 Konvensi Kode
+
+- **Server actions:** hanya di `src/server/actions/` (`"use server"`); file frontend (komponen/page) tidak boleh berisi `"use server"` — cukup import method.
+- **Bot proxy:** akses ke `BOT_API_URL` hanya lewat `src/lib/gowa.ts` (fetch + Basic Auth); dipanggil dari server action, bukan langsung dari browser.
+- **Supabase client:** server-only (service key) di `src/lib/supabase/`; jangan pernah pakai service key di komponen client.
+
 ---
 
 ## 3. User Persona (Primary)
@@ -122,32 +138,34 @@ Web app untuk **mengatur dan mengonfigurasi bot WhatsApp** — konsep menyerupai
 
 ### 4.1 Flow Utama
 
-1. **Buka app** → `/login` (link ke `/register`). Belum login → redirect ke login.
-2. **Register** (email/password atau SSO Gmail) → Supabase Auth; row `users` dibuat otomatis via trigger.
+1. **Buka app** → landing page (`/`): Hero CTA → `/auth`. Belum login → landing/`/auth`; route app (`/devices`, `/rules`, `/logs`) di-redirect ke `/auth`.
+2. **Auth** di `/auth` — tab "Masuk" / "Daftar" (email/password atau SSO Gmail) → Supabase Auth; row `users` dibuat otomatis via trigger.
 3. **Login sukses** → redirect ke `/devices` (Dashboard). List device kosong + tombol "Tambah Device".
-4. **User isi nama device** → `POST {BOT_API_URL}/api/sessions` → bot buat session → balas `{sessionId, qr}` → QR dirender; session hidup di bot (belum ada di DB).
-5. **User scan QR** pakai WhatsApp (mirip WA Web) → bot update status internal → `connecting` → `connected`.
-6. **App listen status bot** (polling `GET /api/sessions/:id` tiap 2–3 detik; upgrade ke WebSocket/SSE nanti).
-7. **Saat status = `connected`** → app insert row `user_devices(name, device_key=sessionId)` → device resmi masuk DB, muncul di list.
-8. **Konfigurasi rules** di `/rules` (global, bisa di-assign ke banyak device).
-9. **Device berjalan** — bot mengeksekusi rules; aktivitas masuk ke `logs`; dashboard menampilkan timeline.
+4. **User isi nama device** → `POST {BOT_API_URL}/devices` (bisa custom `device_id`) → bot buat device slot, state `disconnected` (belum ada di DB).
+5. **App panggil `GET {BOT_API_URL}/devices/{device_id}/login`** → balas `{qr_link, qr_duration}` → QR dirender di browser via **proxy server-side** (bot pakai Basic Auth, tidak bisa di-fetch langsung dari browser).
+6. **User scan QR** pakai WhatsApp (mirip WA Web) → bot update status internal → `connecting` → `logged_in`.
+7. **App listen status bot** (polling `GET /devices/{device_id}/status` tiap 2–3 detik; upgrade ke WebSocket `/ws?device_id=<id>` nanti).
+8. **Saat status = `logged_in`** → app insert row `user_devices(name, device_key=device_id)` → device resmi masuk DB, muncul di list.
+9. **Konfigurasi rules** di `/rules` (global, bisa di-assign ke banyak device).
+10. **Device berjalan** — bot kirim webhook events ke Next.js (`/api/webhook/gowa`); app verifikasi HMAC, evaluasi rules dari Supabase, eksekusi auto-read/auto-reply via `POST /send/message`, tulis `logs`; dashboard menampilkan timeline.
 
 ### 4.2 Device Lifecycle (detail)
 
 ```
 1. User isi nama device
-2. App → POST {BOT_API_URL}/api/sessions → bot buat session, balas QR
-3. QR ditampilkan; session hidup di bot (BELUM ada row di DB)
-4. User scan → bot update status internal (connecting → connected)
-5. App LISTEN status bot (polling, tiap 2–3 detik)
-6. Saat status = connected → insert user_devices(name, device_key=sessionId)
-7. Device masuk DB; muncul di list Devices
+2. App → POST {BOT_API_URL}/devices → bot buat device slot (state disconnected)
+3. App → GET /devices/{device_id}/login → {qr_link, qr_duration}
+4. QR ditampilkan (proxy server-side); device slot hidup di bot (BELUM ada row di DB)
+5. User scan → bot update status internal (connecting → logged_in)
+6. App LISTEN status bot (polling /devices/{device_id}/status, tiap 2–3 detik)
+7. Saat status = logged_in → insert user_devices(name, device_key=device_id)
+8. Device masuk DB; muncul di list Devices
 ```
 
 **Aturan wajib:**
 
-- **Insert DB hanya setelah connected** — device yang gagal/abandon tidak pernah masuk DB.
-- **Session timeout di bot** untuk QR yang tidak di-scan (mis. kedaluwarsa 60–90 detik) + tombol "Batal" yang memanggil disconnect → hindari session orphan.
+- **Insert DB hanya setelah connected/logged_in** — device yang gagal/abandon tidak pernah masuk DB.
+- **QR timeout pakai `qr_duration` dari bot** (default 30 dtk; expired → tombol "Muat ulang" memanggil login lagi) + tombol "Batal" memanggil `POST /devices/{device_id}/logout` → hindari slot orphan.
 - **Upsert guard**: cek `device_key` sudah ada di `user_devices` user tersebut sebelum insert.
 
 ---
@@ -156,25 +174,40 @@ Web app untuk **mengatur dan mengonfigurasi bot WhatsApp** — konsep menyerupai
 
 ### 5.1 Elemen Global
 
-- **Root layout:** logo "wenderdotnet" (klik → `/devices` jika login), toggle dark/light (persisten), user menu (avatar, nama, Logout).
+- **Root layout (`layout.tsx`):** hanya `html/body` + font **Inter** + theme base. Route groups:
+  - `(marketing)` → landing `(`/`)` — navbar (logo → `/`, CTA "Masuk" → `/auth`) + footer.
+  - `(auth)` → `/auth` — split layout, tanpa navbar.
+  - `(app)` → dashboard `/devices`, `/rules`, `/logs` — topbar app: logo "wenderdotnet" (klik → `/devices`), toggle dark/light (persisten), user menu (avatar, nama, Logout).
 - **Primitives:** Button (primary/secondary/danger), Input, Textarea, Select, Toggle, Badge, Modal, Tab, Skeleton (loading), Empty state, Toast.
 
-### 5.2 `/login`
+### 5.2 Landing Page (`/`)
 
-1. Logo (besar, centered)
-2. Heading "Masuk"
-3. Input Email • Input Password • area error
-4. Tombol "Masuk" (loading saat submit)
-5. Link "Lupa password?" • divider "atau" • tombol SSO Gmail
-6. Link "Daftar akun baru" → `/register`
+1. Navbar (logo, CTA "Masuk" → `/auth`)
+2. Hero: headline + subjudul + CTA (→ `/auth`)
+3. Intro singkat proyek
+4. 3 section fitur utama (bukan card): image kiri + teks kanan → terbalik (image kanan) → terbalik lagi (image kiri); tiap section: judul fitur, deskripsi singkat, CTA "Pelajari lebih lanjut" (scroll/section)
+5. Kata sambutan creator
+6. Subscribe newsletter (input email + tombol; simpan ke tabel `newsletters`)
+7. Footer
 
-### 5.3 `/register`
+### 5.3 `/auth` (login & register — satu halaman)
 
-1. Logo
-2. Heading "Daftar"
-3. Input Nama lengkap • Email • Password (min 8) • Konfirmasi password • area error
-4. Tombol "Daftar" • tombol SSO Gmail
-5. Link "Sudah punya akun? Masuk"
+Layout: **kiri = full gambar** (brand/hero visual), **kanan = form**. Tanpa navbar. Dua tab: "Masuk" / "Daftar".
+
+**Tab "Masuk":**
+
+1. Heading "Masuk" + subjudul
+2. Input Email • Input Password • area error
+3. Tombol "Masuk" (loading saat submit)
+4. Link "Lupa password?" • divider "atau" • tombol SSO Gmail
+5. Link "Daftar akun baru" → pindah ke tab "Daftar"
+
+**Tab "Daftar":**
+
+1. Heading "Daftar"
+2. Input Nama lengkap • Email • Password (min 8) • Konfirmasi password • area error
+3. Tombol "Daftar" • tombol SSO Gmail
+4. Link "Sudah punya akun? Masuk" → pindah ke tab "Masuk"
 
 ### 5.4 `/devices` (Dashboard)
 
@@ -238,8 +271,8 @@ Web app untuk **mengatur dan mengonfigurasi bot WhatsApp** — konsep menyerupai
 
 - Tabel jamak `snake_case`; kolom `snake_case`; PK `id uuid` (default `gen_random_uuid()`).
 - Timestamp: `created_at` + `updated_at` (`timestamptz`, default `now()`).
-- **Tabel `devices` TIDAK ADA** — device dikelola bot server; status dicek live via `GET {BOT_API_URL}/api/devices`.
-- Referensi device di DB memakai **`device_key` text** (= `sessionId` dari bot service).
+- **Tabel `devices` TIDAK ADA** — device dikelola bot server; status dicek live via `GET {BOT_API_URL}/devices` dan `GET /devices/{device_id}/status`.
+- Referensi device di DB memakai **`device_key` text** (= **`device_id`** dari bot service, bukan `sessionId`).
 
 ### `users` (profil, 1:1 dengan `auth.users`)
 
@@ -253,13 +286,23 @@ Web app untuk **mengatur dan mengonfigurasi bot WhatsApp** — konsep menyerupai
 
 > Identitas & email hidup di `auth.users` (Supabase Auth — enable provider Google + email). Email **tidak diduplikasi** (3NF).
 
-### `user_devices` (junction: user ↔ device_key) — di-insert SAAT connected
+### `newsletters` (subscribe landing — publik)
+
+| Kolom        | Tipe        | Constraint                            |
+| ------------ | ----------- | ------------------------------------- |
+| `id`         | uuid        | **PK**                                |
+| `email`      | text        | NOT NULL, **UNIQUE**                  |
+| `created_at` | timestamptz | NOT NULL, default `now()`             |
+
+_Insert publik (anon) via RLS policy `USING (true) WITH CHECK (true)`; select hanya via service key (admin). Tidak ada FK ke `auth.users` (belum login)._
+
+### `user_devices` (junction: user ↔ device_key) — di-insert SAAT logged_in
 
 | Kolom        | Tipe        | Constraint                                       |
 | ------------ | ----------- | ------------------------------------------------ |
 | `id`         | uuid        | **PK**                                           |
 | `user_id`    | uuid        | NOT NULL, FK → `auth.users.id` ON DELETE CASCADE |
-| `device_key` | text        | NOT NULL (= sessionId bot)                       |
+| `device_key` | text        | NOT NULL (= device_id bot)                       |
 | `name`       | text        | NOT NULL (nama ramah dari UI)                    |
 | `role`       | text        | NOT NULL, default `'owner'`                      |
 | `created_at` | timestamptz | NOT NULL, default `now()`                        |
@@ -291,7 +334,7 @@ Index `(user_id)`
 | Kolom        | Tipe        | Constraint                                  |
 | ------------ | ----------- | ------------------------------------------- |
 | `id`         | uuid        | **PK**                                      |
-| `device_key` | text        | NOT NULL (= sessionId bot)                  |
+| `device_key` | text        | NOT NULL (= device_id bot)                  |
 | `rule_id`    | uuid        | NOT NULL, FK → `rules.id` ON DELETE CASCADE |
 | `enabled`    | boolean     | NOT NULL, default `true`                    |
 | `created_at` | timestamptz | NOT NULL, default `now()`                   |
@@ -320,10 +363,11 @@ _Append-only (tanpa `updated_at`)._ Index `(user_id, created_at DESC)`
 
 ```
 auth.users 1──1 users
-auth.users 1──N user_devices    (device_key = sessionId bot)
+auth.users 1──N user_devices    (device_key = device_id bot)
 users      1──N rules
-rules      1──N device_rules    (device_key = sessionId bot)
+rules      1──N device_rules    (device_key = device_id bot)
 users      1──N logs
+newsletters  (standalone — tanpa FK)
 ```
 
 **Semua FK anak: ON DELETE CASCADE.**
@@ -331,24 +375,35 @@ users      1──N logs
 ### RLS & Bot
 
 - `users`: baris sendiri (`id = auth.uid()`)
+- `newsletters`: insert publik (anon); select hanya service key
 - `user_devices`: `user_id = auth.uid()`
 - `rules`: `user_id = auth.uid()`; `device_rules`: via `rules.user_id`
 - `logs`: `user_id = auth.uid()`
-- **Bot tulis `logs` + status via service key** (bypass RLS). Bot juga bisa update status secara langsung — verifikasi saat integrasi bot.
+- **Next.js (webhook receiver) tulis `logs` via service key** (bypass RLS) saat memproses webhook events dari bot. Bot **tidak** menulis ke Supabase.
 
 ### API Contract — yang Next.js asumsikan dari Bot Service
 
-| Method + Path                       | Request → Response                         |
-| ----------------------------------- | ------------------------------------------ |
-| `POST /api/sessions`                | `{ name? }` → `{ sessionId, qr }`          |
-| `GET /api/sessions/:id`             | → status session                           |
-| `GET /api/sessions/:id/qr`          | → `{ qr }` (refresh utk polling)           |
-| `GET /api/devices`                  | → `[{ sessionId, status, jid }]`           |
-| `POST /api/sessions/:id/send`       | `{ chatJid, body }` → ack (Phase lanjutan) |
-| `POST /api/sessions/:id/disconnect` | → ack                                      |
-| `POST /api/sessions/:id/listen`     | `{ rules/listeners }` → ack                |
-| `GET /api/sessions/:id/chats`       | → daftar chat utk UI (deferred)            |
-| `GET /health`                       | → health check                             |
+Merujuk ke `openapi.yaml` (root repo) — endpoint berikut dipakai di MVP. Semua panggilan pakai **Basic Auth** (`BOT_API_URL` + `BOT_AUTH`).
+
+| Method + Path                          | Request → Response                                 |
+| -------------------------------------- | -------------------------------------------------- |
+| `POST /devices`                        | `{ device_id?, webhook_url?, ... }` → device slot  |
+| `GET /devices`                         | → `[{ id, display_name, state, jid }]`             |
+| `GET /devices/{device_id}`             | → info device                                      |
+| `DELETE /devices/{device_id}`          | → hapus slot (logout + clear data)                 |
+| `GET /devices/{device_id}/login`       | → `{ device_id, qr_link, qr_duration }` (QR = URL) |
+| `POST /devices/{device_id}/login/code` | `?phone=` → `{ pair_code }` (sambung tanpa scan)   |
+| `GET /devices/{device_id}/status`      | → `{ is_connected, is_logged_in }`                 |
+| `POST /devices/{device_id}/logout`     | → logout, slot dipertahankan                       |
+| `POST /devices/{device_id}/reconnect`  | → reconnect ke WhatsApp                            |
+| `POST /send/message`                   | `{ phone, message, reply_message_id?, ... }` → ack |
+| `GET /health`                          | → health check                                     |
+
+**Webhook events (inbound, dari bot → Next.js):**
+
+- Bot dikonfigurasi `WHATSAPP_WEBHOOK_URL` → `{APP_URL}/api/webhook/gowa`, `WHATSAPP_WEBHOOK_SECRET` utk sign HMAC, `WHATSAPP_WEBHOOK_EVENTS` (mis. `message,message.ack`).
+- Event `message` membawa payload chat/sender/isi pesan. Next.js (rule engine) verifikasi signature → evaluasi `rules` user → auto-read (bila rule listen + auto_read) & auto-reply (via `POST /send/message`) → insert `logs`.
+- Status per-device juga bisa didapatkan via **WebSocket** `/ws?device_id=<id>` (upgrade nanti).
 
 ---
 
@@ -385,21 +440,26 @@ users      1──N logs
 
 ## 8. Log Keputusan (Approved)
 
-| No  | Keputusan                                                                                                        | Status      |
-| --- | ---------------------------------------------------------------------------------------------------------------- | ----------- |
-| 1   | Nama produk **wenderdotnet**                                                                                     | ✅ Approved |
-| 2   | Satu Next.js app; bot eksternal via **podman compose**; compose untuk bot di luar repo                           | ✅ Approved |
-| 3   | Supabase untuk akun (email + **SSO Gmail**) & database; auth/users id di `auth.users`                            | ✅ Approved |
-| 4   | Normalisasi 3NF: junction `user_devices` & `device_rules`; `rules` satu tabel penuh                              | ✅ Approved |
-| 5   | Tabel `devices` **tidak ada**; status live dari bot `GET /api/devices`; referensi pakai `device_key`             | ✅ Approved |
-| 6   | **Insert `user_devices` hanya setelah connected** (listen status bot → baru masuk DB)                            | ✅ Approved |
-| 7   | Listeners + auto_reply_rules → digabung tabel `rules`; inbox → tabel `logs` (fitur balas dashboard TIDAK di MVP) | ✅ Approved |
-| 8   | Listener input manual di MVP; integrasi `/chats` bot ditunda                                                     | ✅ Approved |
-| 9   | Rules = milik user (global), assignable ke banyak device                                                         | ✅ Approved |
-| 10  | Pricing/billing ditunda (late)                                                                                   | ✅ Approved |
-| 11  | Dark + light mode (keduanya)                                                                                     | ✅ Approved |
-| 12  | Mood clean & professional; slate 80% + indigo 20% + semantic; **Inter** via `next/font`                          | ✅ Approved |
-| 13  | Status device di-polling (2–3 dtk) dari bot; upgrade WebSocket/SSE nanti                                         | ✅ Approved |
+| No  | Keputusan                                                                                                                                                                                       | Status      |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 1   | Nama produk **wenderdotnet**                                                                                                                                                                    | ✅ Approved |
+| 2   | Satu Next.js app; bot eksternal via **podman compose**; compose untuk bot di luar repo                                                                                                          | ✅ Approved |
+| 3   | Supabase untuk akun (email + **SSO Gmail**) & database; auth/users id di `auth.users`                                                                                                           | ✅ Approved |
+| 4   | Normalisasi 3NF: junction `user_devices` & `device_rules`; `rules` satu tabel penuh                                                                                                             | ✅ Approved |
+| 5   | Tabel `devices` **tidak ada**; status live dari bot `GET /devices`; referensi pakai `device_key`                                                                                                | ✅ Approved |
+| 6   | **Insert `user_devices` hanya setelah logged_in/connected** (listen status bot → baru masuk DB)                                                                                                 | ✅ Approved |
+| 7   | Listeners + auto_reply_rules → digabung tabel `rules`; inbox → tabel `logs` (fitur balas dashboard TIDAK di MVP)                                                                                | ✅ Approved |
+| 8   | Listener input manual di MVP; integrasi `/chats` bot ditunda                                                                                                                                    | ✅ Approved |
+| 9   | Rules = milik user (global), assignable ke banyak device                                                                                                                                        | ✅ Approved |
+| 10  | Pricing/billing ditunda (late)                                                                                                                                                                  | ✅ Approved |
+| 11  | Dark + light mode (keduanya)                                                                                                                                                                    | ✅ Approved |
+| 12  | Mood clean & professional; slate 80% + indigo 20% + semantic; **Inter** via `next/font`                                                                                                         | ✅ Approved |
+| 13  | Status device di-polling (2–3 dtk) dari bot (`GET /devices/{id}/status`); upgrade WebSocket `/ws` nanti                                                                                         | ✅ Approved |
+| 14  | Bot service = image **`go-whatsapp-web-multidevice`** (API di `openapi.yaml`); device slot pakai `device_id`                                                                                    | ✅ Approved |
+| 15  | **Rule engine dijalankan di Next.js** (webhook receiver `/api/webhook/gowa`): verify HMAC → evaluasi rules → auto-reply via `POST /send/message` → tulis `logs`. Bot hanya kirim webhook events | ✅ Approved |
+| 16  | QR login = `qr_link` (URL) dari `GET /devices/{id}/login`; dirender via **proxy server-side** (Basic Auth); ada opsi pairing code                                                               | ✅ Approved |
+| 17  | Landing page (`/`) + auth gabung di `/auth` (split layout, tab Masuk/Daftar); route group `(marketing)` / `(auth)` / `(app)`; newsletter → tabel `newsletters` (insert publik)                    | ✅ Approved |
+| 18  | **Server actions hanya di `src/server/actions/`** (`"use server"`); file frontend tidak boleh berisi `"use server"` — cukup panggil method                                                               | ✅ Approved |
 
 ---
 
