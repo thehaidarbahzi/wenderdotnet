@@ -2,12 +2,12 @@
 
 ## Prerequisites
 
-| Tool | Version | Notes |
-| --- | --- | --- |
-| Node.js | 20+ | |
-| pnpm | 11+ | `corepack enable` if missing (packageManager is pinned in `package.json`) |
-| Podman | 4+ | For the WhatsApp bot container (`podman compose`). Docker also works with the same file. |
-| Supabase project | — | Free tier is enough for development |
+| Tool             | Version | Notes                                                                                    |
+| ---------------- | ------- | ---------------------------------------------------------------------------------------- |
+| Node.js          | 20+     |                                                                                          |
+| pnpm             | 11+     |                                                                                          |
+| Podman           | 4+      | For the WhatsApp bot container (`podman compose`). Docker also works with the same file. |
+| Supabase project | —       | Free tier is enough for development                                                      |
 
 ## 1. Clone and install
 
@@ -27,11 +27,11 @@ Fill in every value:
 
 ### Supabase
 
-| Variable | Where to find it |
-| --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase Dashboard → Project Settings → API |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Same page, "anon public" key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Same page, "service_role" key. **Server-only. Never expose to the client or commit it.** |
+| Variable                        | Where to find it                                                                         |
+| ------------------------------- | ---------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase Dashboard → Project Settings → API                                              |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Same page, "anon public" key                                                             |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Same page, "service_role" key. **Server-only. Never expose to the client or commit it.** |
 
 In the Supabase dashboard:
 
@@ -40,15 +40,15 @@ In the Supabase dashboard:
 
 ### Bot API + container
 
-| Variable | Meaning |
-| --- | --- |
-| `BOT_API_URL` | Base URL of the bot service, e.g. `http://localhost:3000` |
-| `BOT_AUTH` | Basic Auth credentials as `username:password` |
-| `WHATSAPP_PORT` | Host port mapped to the bot container |
-| `WHATSAPP_AUTH_USERNAME` / `WHATSAPP_AUTH_PASSWORD` | Must match `BOT_AUTH` |
-| `WHATSAPP_WEBHOOK_URL` | Full URL the bot POSTs events to, e.g. `http://host.docker.internal:3001/api/webhook/gowa` (port = your Next.js dev port) |
-| `WHATSAPP_WEBHOOK_SECRET` | Shared HMAC secret used by `/api/webhook/gowa` to verify payloads |
-| `WHATSAPP_WEBHOOK_EVENTS` | Comma-separated, e.g. `message,message.ack` |
+| Variable                                            | Meaning                                                                                                                   |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `BOT_API_URL`                                       | Base URL of the bot service, e.g. `http://localhost:3000`                                                                 |
+| `BOT_AUTH`                                          | Basic Auth credentials as `username:password`                                                                             |
+| `WHATSAPP_PORT`                                     | Host port mapped to the bot container                                                                                     |
+| `WHATSAPP_AUTH_USERNAME` / `WHATSAPP_AUTH_PASSWORD` | Must match `BOT_AUTH`                                                                                                     |
+| `WHATSAPP_WEBHOOK_URL`                              | Full URL the bot POSTs events to, e.g. `http://host.docker.internal:3001/api/webhook/gowa` (port = your Next.js dev port) |
+| `WHATSAPP_WEBHOOK_SECRET`                           | Shared HMAC secret used by `/api/webhook/gowa` to verify payloads                                                         |
+| `WHATSAPP_WEBHOOK_EVENTS`                           | Comma-separated, e.g. `message,message.ack`                                                                               |
 
 > `WHATSAPP_*` variables are consumed by `compose.yaml`; `BOT_API_URL` / `BOT_AUTH` are consumed by the Next.js app. Keep them consistent.
 
@@ -89,9 +89,9 @@ If step 6-7 produce no logs, check that the bot's webhook URL is reachable from 
 
 ## Troubleshooting
 
-| Symptom | Likely cause |
-| --- | --- |
-| QR never appears | `BOT_API_URL`/`BOT_AUTH` wrong, or bot container not running (`podman ps`) |
+| Symptom                            | Likely cause                                                                             |
+| ---------------------------------- | ---------------------------------------------------------------------------------------- |
+| QR never appears                   | `BOT_API_URL`/`BOT_AUTH` wrong, or bot container not running (`podman ps`)               |
 | Device connects but no logs arrive | Webhook URL unreachable from container; wrong `WHATSAPP_WEBHOOK_EVENTS`; secret mismatch |
-| Login loops back to `/auth` | Cookies blocked, or `NEXT_PUBLIC_SUPABASE_URL` mismatched with the auth session |
-| `users` row missing after signup | Migration not applied (the profile trigger lives there) |
+| Login loops back to `/auth`        | Cookies blocked, or `NEXT_PUBLIC_SUPABASE_URL` mismatched with the auth session          |
+| `users` row missing after signup   | Migration not applied (the profile trigger lives there)                                  |
