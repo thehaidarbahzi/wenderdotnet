@@ -92,18 +92,67 @@ Web app untuk **mengatur dan mengonfigurasi bot WhatsApp** — konsep menyerupai
 
 ### 2.8 Project Structure
 
-- using nextjs app router
+> **Status:** Sudah **terimplementasi penuh** di codebase.
+
+- using nextjs app router (Next.js 16.3.0, React 19, TypeScript)
+- **Styling:** Tailwind CSS v4 (tanpa `tailwind.config.*` — fully CSS-driven via `globals.css`)
+- **UI Library:** lucide-react (ikon), sonner (toast), clsx + tailwind-merge (class utility), next-themes (dark/light)
 - 1 landing page consisting of: Hero CTA, short introduction of this project, 3 points of what is the main feature of this project not using card but with the left image right text of the title feature, short description of the feature and cta for learn more and each is reversed so first image is left and text right, second is reversed then last is reversed again, section of what the creator say about this project like kata sambutan from creator, section of subscribe to newsletter, then footer (navbar dan footer taruh di `(marketing)` layout — root layout hanya `html/body` + font)
 - 1 page untuk login/register nanti di buat layout full gambar di kiri form di kanan, route `/auth` (tab "Masuk" / "Daftar", tanpa navbar)
 - **Server actions tidak pernah didefinisikan di file frontend.** Semua fungsi `"use server"` (mutasi, panggilan ke bot, tulis DB) ditaruh di folder khusus, mis. `src/server/actions/*` (dibagi per domain: `devices.ts`, `rules.ts`, `logs.ts`, `auth.ts`, `newsletter.ts`). Frontend hanya memanggil method dari sana. Konsekuensi: file UI tidak mengandung `"use server"` sama sekali.
 
+### 2.9 Struktur Folder (Aktual)
+
+```
+src/
+├── app/
+│   ├── globals.css              # Design tokens + Tailwind v4 config
+│   ├── layout.tsx               # Root: Inter font, ThemeProvider, Toaster
+│   ├── (marketing)/
+│   │   ├── layout.tsx           # Navbar + Footer wrapper
+│   │   └── page.tsx             # Landing page
+│   ├── (auth)/
+│   │   ├── layout.tsx           # Split-screen brand panel
+│   │   └── auth/page.tsx        # Login/Register form
+│   ├── (app)/
+│   │   ├── layout.tsx           # Topbar wrapper
+│   │   ├── devices/page.tsx     # Device management
+│   │   ├── rules/page.tsx       # Rule CRUD
+│   │   └── logs/page.tsx        # Activity log viewer
+│   └── api/
+│       ├── devices/             # CRUD + QR + status + logout
+│       ├── rules/               # CRUD
+│       ├── logs/                # Filtered list
+│       └── webhook/gowa/        # Inbound webhook (HMAC verified)
+├── components/
+│   ├── ui/                      # Button, Input, Badge, Modal, Toggle, EmptyState, Skeleton
+│   ├── marketing/               # HeroPreview, FeatureVisuals, NewsletterForm
+│   ├── navbar.tsx, topbar.tsx, footer.tsx
+│   ├── logo.tsx                 # WMark, LogoMark, Wordmark
+│   ├── theme-provider.tsx, theme-toggle.tsx
+├── lib/
+│   ├── cn.ts                    # clsx + tailwind-merge
+│   ├── gowa.ts                  # HTTP client for GOWA bot API
+│   └── supabase/                # client.ts, server.ts, middleware.ts
+├── server/actions/              # auth.ts, devices.ts, rules.ts, logs.ts, newsletter.ts
+├── types/index.ts               # TypeScript interfaces
+└── proxy.ts                     # Middleware entry (route protection)
+```
+
 ---
 
-## 2.9 Konvensi Kode
+## 2.10 Konvensi Kode
+
+> **Status:** Sudah **terimplementasi penuh** di codebase.
 
 - **Server actions:** hanya di `src/server/actions/` (`"use server"`); file frontend (komponen/page) tidak boleh berisi `"use server"` — cukup import method.
 - **Bot proxy:** akses ke `BOT_API_URL` hanya lewat `src/lib/gowa.ts` (fetch + Basic Auth); dipanggil dari server action, bukan langsung dari browser.
 - **Supabase client:** server-only (service key) di `src/lib/supabase/`; jangan pernah pakai service key di komponen client.
+- **UI Components:** semua di `src/components/ui/` dengan named exports; menggunakan `cn()` utility untuk class merging.
+- **API Routes:** semua di `src/app/api/` — RESTful pattern (GET list, POST create, PUT update, DELETE remove).
+- **Middleware:** entry point di `src/proxy.ts` (bukan `middleware.ts`); melindungi route `/devices`, `/rules`, `/logs`.
+- **Types:** semua TypeScript interfaces di `src/types/index.ts`.
+- **React Compiler:** enabled via `babel-plugin-react-compiler` + `reactCompiler: true` di `next.config.ts`.
 
 ---
 
@@ -170,98 +219,120 @@ Web app untuk **mengatur dan mengonfigurasi bot WhatsApp** — konsep menyerupai
 
 ---
 
-## 5. Wireframe
+## 5. Wireframe & Status Implementasi
+
+> **Status:** Semua halaman sudah **terimplementasi penuh** di `src/app/`. Wireframe di bawah sudah disesuaikan dengan aktual.
 
 ### 5.1 Elemen Global
 
-- **Root layout (`layout.tsx`):** hanya `html/body` + font **Inter** + theme base. Route groups:
-  - `(marketing)` → landing `(`/`)` — navbar (logo → `/`, CTA "Masuk" → `/auth`) + footer.
-  - `(auth)` → `/auth` — split layout, tanpa navbar.
-  - `(app)` → dashboard `/devices`, `/rules`, `/logs` — topbar app: logo "wenderdotnet" (klik → `/devices`), toggle dark/light (persisten), user menu (avatar, nama, Logout).
-- **Primitives:** Button (primary/secondary/danger), Input, Textarea, Select, Toggle, Badge, Modal, Tab, Skeleton (loading), Empty state, Toast.
+- **Root layout (`src/app/layout.tsx`):** `html/body` + font **Inter** via `next/font/google` + `ThemeProvider` (next-themes) + `Toaster` (sonner). Route groups:
+  - `(marketing)` → landing `(`/`)` — navbar + footer
+  - `(auth)` → `/auth` — split layout, tanpa navbar
+  - `(app)` → dashboard `/devices`, `/rules`, `/logs` — topbar app
+- **Primitives (`src/components/ui/`):** Button (primary/secondary/danger/ghost), Input (label + error), Badge (success/warning/error/info/whatsapp/default), Modal (escape + backdrop close), Toggle (`role="switch"`), EmptyState, Skeleton, Toast (sonner).
+- **Layout components:** Navbar (sticky, mobile hamburger), Topbar (nav links + logout), Footer, ThemeToggle (sun/moon dengan CSS transition).
 
-### 5.2 Landing Page (`/`)
+### 5.2 Landing Page (`/`) — `src/app/(marketing)/page.tsx`
 
-1. Navbar (logo, CTA "Masuk" → `/auth`)
-2. Hero: headline + subjudul + CTA (→ `/auth`)
-3. Intro singkat proyek
-4. 3 section fitur utama (bukan card): image kiri + teks kanan → terbalik (image kanan) → terbalik lagi (image kiri); tiap section: judul fitur, deskripsi singkat, CTA "Pelajari lebih lanjut" (scroll/section)
-5. Kata sambutan creator
-6. Subscribe newsletter (input email + tombol; simpan ke tabel `newsletters`)
-7. Footer
+1. **Navbar** (logo WMark → `/devices`, nav "Fitur" → `/#fitur`, "Cara pakai" → `/#cara-pakai`, ThemeToggle, CTA "Masuk" → `/auth`)
+2. **Hero:** headline "Kelola bot WhatsApp Anda dari satu dashboard" + subjudul + 2 CTA ("Buat akun gratis" → `/auth`, "Lihat cara pakai" → `#cara-pakai`) + `HeroPreview` (static mockup Devices screen)
+3. **How it works (`#cara-pakai`):** 3 langkah (Masuk & tambah device → Scan QR → Buat aturan), numbered steps dengan border-kiri primary
+4. **Features (`#fitur`):** 3 section alternating layout (`SectionFeature` component):
+   - "Semua nomor di satu tempat" — `DeviceStackVisual` (overlapping cards)
+   - "Auto-reply yang bisa dikontrol" — `AutoReplyVisual` (chat bubble mockup)
+   - "Setiap aktivitas tercatat" — `LogsVisual` (timeline mockup)
+5. **Creator statement (`#tentang`):** Quote block dengan avatar "W" + "Tim wenderdotnet"
+6. **Newsletter (`#newsletter`):** `NewsletterForm` → server action `subscribeNewsletter()` → tabel `newsletters`
+7. **Footer** — brand, nav links, copyright
 
-### 5.3 `/auth` (login & register — satu halaman)
+### 5.3 `/auth` (login & register — satu halaman) — `src/app/(auth)/auth/page.tsx`
 
-Layout: **kiri = full gambar** (brand/hero visual), **kanan = form**. Tanpa navbar. Dua tab: "Masuk" / "Daftar".
+Layout: **kiri = brand panel** (bg-primary gradient, headline, capabilities list), **kanan = form**. Tanpa navbar.
 
 **Tab "Masuk":**
 
 1. Heading "Masuk" + subjudul
-2. Input Email • Input Password • area error
+2. Input Email • Input Password • area error (role="alert")
 3. Tombol "Masuk" (loading saat submit)
-4. Link "Lupa password?" • divider "atau" • tombol SSO Gmail
-5. Link "Daftar akun baru" → pindah ke tab "Daftar"
+4. Divider "atau" • tombol "Masuk dengan Google" (Google OAuth icon)
+5. Link "Daftar" → pindah ke tab "Daftar"
 
 **Tab "Daftar":**
 
-1. Heading "Daftar"
-2. Input Nama lengkap • Email • Password (min 8) • Konfirmasi password • area error
-3. Tombol "Daftar" • tombol SSO Gmail
-4. Link "Sudah punya akun? Masuk" → pindah ke tab "Masuk"
+1. Heading "Daftar" + subjudul
+2. Input Nama Lengkap • Email • Password (min 8) • Konfirmasi Password • area error
+3. Tombol "Daftar" (loading saat submit) • tombol "Masuk dengan Google"
+4. Link "Masuk" → pindah ke tab "Masuk"
 
-### 5.4 `/devices` (Dashboard)
+> **Catatan:** Fitur "Lupa password?" belum diimplementasi (belum ada di UI). Device "Settings" dan assign device ke rule juga belum ada di UI (Phase lanjutan).
 
-1. Top bar global
-2. Heading "Devices" + subjudul
+### 5.4 `/devices` (Dashboard) — `src/app/(app)/devices/page.tsx`
+
+1. Topbar global
+2. Heading "Devices" + subjudul "Kelola device WhatsApp Anda"
 3. Tombol primary "+ Tambah Device"
 4. Daftar kartu device (terbaru di atas), tiap kartu:
-   - Status badge (connected/connecting/disconnected)
-   - Nama device (bold) + info kecil (tanggal dibuat, JID jika connected)
-   - Tombol aksi: Connect / Disconnect
-   - Menu: Settings → `/rules` (assigned), Delete (konfirmasi)
-5. Empty state: ilustrasi + "Belum ada device" + CTA tambah
+   - Status badge (Connected/Connecting/Disconnected)
+   - Nama device (bold) + device ID (monospace, truncate)
+   - Tombol aksi: Connect (Plug icon) / Disconnect (Unplug icon)
+   - Tombol Delete (Trash2 icon, konfirmasi modal)
+5. Empty state: QrCode icon + "Belum ada device" + CTA tambah
+6. Loading state: 3 skeleton cards
 
-**Modal "Tambah Device":** Heading → input Nama device → tombol "Buat" + "Batal".
+**Modal "Tambah Device":** Heading → input "Nama Device" (placeholder "Contoh: Toko Online") → tombol "Buat" + "Batal".
 
-**Modal "QR Connect":** Heading "Hubungkan WhatsApp" → instruksi scan → kotak QR (auto-refresh, expired → "Muat ulang") → status "Menunggu scan…"/"Connected ✓" → tombol "Batal".
+**Modal "QR Connect":** Heading "Hubungkan WhatsApp" → instruksi scan → QR image (auto-refresh via polling setiap 3 detik) → status "Menunggu scan..." → tombol "Batal" + "Muat Ulang" (RefreshCw icon).
 
-### 5.5 `/rules` (Rules — global per user)
+**Modal "Hapus Device":** Konfirmasi + tombol "Hapus" (danger).
 
-1. Top bar global
-2. Header: heading "Rules" + tombol "+ Tambah Rule"
-3. Daftar rule (tiap item):
-   - Badge action type (`listen` / `auto_reply`)
-   - Nama rule
-   - Ringkasan: target (grup/private), pattern, reply (truncate)
-   - Toggle Enabled • Toggle Auto-read (untuk listen)
-   - Tombol Edit + Hapus (konfirmasi)
-   - Kolom "Device" (list device yang di-assign)
-4. Empty state: "Belum ada rule"
+### 5.5 `/rules` (Rules — global per user) — `src/app/(app)/rules/page.tsx`
+
+1. Topbar global
+2. Header: heading "Rules" + subjudul + tombol "+ Tambah Rule"
+3. Daftar rule (tiap item card):
+   - Nama rule + Badge action type (Listen/Auto Reply) + Badge Nonaktif (jika disabled)
+   - Ringkasan: target (group/private), pattern
+   - Toggle Enabled
+   - Tombol Edit (Pencil icon) + Hapus (Trash2 icon, konfirmasi modal)
+4. Empty state: "Belum ada rules" + deskripsi
 
 **Modal "Tambah/Edit Rule":**
 
 1. Input Nama rule
 2. Select Action type (`listen` / `auto_reply`)
-3. Select Target type (`group` / `private`, opsional — kosong = semua)
-4. Input Target JID (opsional, kosong = semua dari target type)
-5. (auto_reply) Select Trigger type (`keyword`/`regex`) + Input Pattern + Textarea Reply
-6. (listen) Toggle Auto-read (default off)
-7. Toggle Enabled (default on)
-8. Assign ke device (checkbox/select)
-9. Tombol "Simpan" + "Batal"
+3. Select Target type (`Semua` / `Group` / `Private`)
+4. Input Target JID (placeholder "Contoh: 120363xxx@g.us")
+5. (auto_reply) Select Trigger type (`keyword` / `regex`) + Input Pattern + Textarea Reply
+6. (listen) Toggle Auto Read (default on)
+7. Toggle Aktif (default on)
+8. Tombol "Simpan" + "Batal"
 
-### 5.6 `/logs` (aktivitas bot — per device atau global)
+> **Catatan:** Assign rule ke device (checkbox/select) belum diimplementasi di UI — ada di tabel `device_rules` di DB tapi belum ada UI untuk manage.
 
-1. Top bar global
-2. Header: heading "Logs" + filter device + filter event type
-3. Timeline aktivitas (terbaru di atas), tiap item:
-   - Timestamp
-   - Event badge (`message_sent`, `message_received`, `auto_reply_sent`, `auto_read`, `session_connected`, `session_disconnected`, `error`)
-   - Deskripsi: "bot kirim pesan ke grup _Promo_", "auto-read di PC _Budi_", dst.
-   - Body/isi pesan (jika ada)
-4. Empty state: "Belum ada aktivitas"
+### 5.6 `/logs` (aktivitas bot) — `src/app/(app)/logs/page.tsx`
 
-> Catatan: Inbox/percakapan 2 kolom **tidak termasuk MVP** — diganti log aktivitas (keputusan disetujui). Fitur balas dari dashboard masuk Phase lanjutan.
+1. Topbar global
+2. Header: heading "Logs" + subjudul
+3. Filter bar: dropdown Device + dropdown Event Type (7 tipe)
+4. Timeline aktivitas (terbaru di atas) dengan vertical line + dot indicator:
+   - Timestamp relatif ("Baru saja", "5 menit yang lalu", dst.)
+   - Event badge (Message Received, Message Sent, Auto Reply Sent, Auto Read, Session Connected, Session Disconnected, Error)
+   - Deskripsi (dari API)
+   - Body/isi pesan (jika ada, dalam pre/code block)
+5. Empty state: "Belum ada logs"
+6. Loading state: 5 skeleton cards
+
+> **Catatan:** Inbox/percakapan 2 kolom **tidak termasuk MVP** — diganti log aktivitas. Fitur balas dari dashboard masuk Phase lanjutan.
+
+### 5.7 Komponen Marketing (`src/components/marketing/`)
+
+| Komponen         | File               | Deskripsi                                           |
+| ---------------- | ------------------ | --------------------------------------------------- |
+| `HeroPreview`    | `hero-preview.tsx` | Static mockup Devices screen untuk hero section     |
+| `DeviceStackVisual` | `feature-visuals.tsx` | Overlapping cards (QR panel + device list)      |
+| `AutoReplyVisual`| `feature-visuals.tsx` | Chat bubble mockup auto-reply flow              |
+| `LogsVisual`     | `feature-visuals.tsx` | Timeline log mockup dengan badges              |
+| `NewsletterForm` | `newsletter-form.tsx` | Email form → server action → toast feedback     |
 
 ---
 
@@ -409,32 +480,50 @@ Merujuk ke `openapi.yaml` (root repo) — endpoint berikut dipakai di MVP. Semua
 
 ## 7. Style & Mood Visual
 
-**Mood:** Clean & professional. **Dark + light mode** (keduanya didukung, toggle persisten).
+**Mood:** Clean & professional. **Dark + light mode** (keduanya didukung, toggle persisten via `next-themes`).
+
+> **Status implementasi:** Bagian ini sudah **terimplementasi penuh** di `src/app/globals.css` dengan CSS custom properties yang di-map ke Tailwind v4 via `@theme inline`.
 
 ### 7.1 Prinsip Warna — aturan 80/20
 
 80% permukaan netral + teks (kesan "clean"), 20% warna untuk aksi & status (kesan "professional").
 
-| Peran          | Warna   | Hex (Light / Dark)                                   | Keterangan                         |
-| -------------- | ------- | ---------------------------------------------------- | ---------------------------------- |
-| Neutral (80%)  | Slate   | bg `#F8FAFC` / `#0F172A`; text `#0F172A` / `#F1F5F9` | Kontras ≥ 12:1 (AAA)               |
-| Primary (20%)  | Indigo  | `#4F46E5` (bg terang) • `#818CF8` (aksen utk dark)   | Rasio ~6.3:1 di bg terang (AA)     |
-| Semantic       | Emerald | `#10B981` — connected/sukses                         | Status device & rule               |
-| Semantic       | Amber   | `#F59E0B` — connecting/warning                       |                                    |
-| Semantic       | Rose    | `#F43F5E` — error                                    |                                    |
-| Badge WhatsApp | Hijau   | `#25D366`                                            | Badge "connected" (konteks produk) |
+| Peran          | Warna   | Hex (Light / Dark)                                   | Keterangan                         | Status         |
+| -------------- | ------- | ---------------------------------------------------- | ---------------------------------- | -------------- |
+| Neutral (80%)  | Slate   | bg `#F8FAFC` / `#0F172A`; text `#0F172A` / `#F1F5F9` | Kontras ≥ 12:1 (AAA)               | ✅ Implemented |
+| Primary (20%)  | Emerald | `#34D399` (kedua mode)                               | Rasio ~4.5:1 di bg terang (AA)     | ✅ Implemented |
+| Primary Hover  | Emerald | `#2C9771`                                            | State hover tombol/link            | ✅ Implemented |
+| Success        | Emerald | `#34D399` / strong `#1E4D3B` (light) / `#6EE7B7` (dark) | Status connected/sukses       | ✅ Implemented |
+| Warning        | Amber   | `#D97706` (light) / `#FBBF24` (dark)                 | Status connecting/warning          | ✅ Implemented |
+| Error          | Rose    | `#E11D48` (light) / `#FB7185` (dark)                 | Error/hapus                        | ✅ Implemented |
+| Info           | Blue    | `#2563EB` (light) / `#60A5FA` (dark)                 | Badge listen/rule                  | ✅ Implemented |
+| Badge WhatsApp | Hijau   | `#25D366`                                            | Badge "connected" (konteks produk) | ✅ Implemented |
+
+> **Catatan desain:** Referensi `design.png` menunjukkan skema warna hijau tua/teal untuk brand "Slick". Implementasi wenderdotnet menggunakan Emerald (`#34D399`) sebagai primary — selaras dengan nuansa hijau WhatsApp produk.
 
 ### 7.2 Tipografi
 
-- **UI:** **Inter** (variable font) via `next/font`, self-host — konsisten antar OS, kesan SaaS pro. Default system font TIDAK dipakai.
+- **UI:** **Inter** (variable font) via `next/font/google`, self-host — konsisten antar OS, kesan SaaS pro. Default system font TIDAK dipakai.
 - **Kode/pattern/log:** `ui-monospace` (font bawaan) — tidak butuh font khusus.
 - Aksesibilitas: kontras ≥ AA; status selalu disertai teks/ikon, bukan warna saja.
+- **Implementasi:** Variable `--font-inter` di CSS, di-map ke `--font-sans` di `@theme inline`.
 
-### 7.3 Referensi Mood
+### 7.3 Design Tokens (CSS Custom Properties)
+
+Semua token sudah diimplementasi di `src/app/globals.css`:
+
+**Shadow tokens:** `--shadow-xs`, `--shadow-sm`, `--shadow-md`, `--shadow-lg` (opacity berbeda per theme)
+
+**Border radius tokens:** `--radius-sm: 6px`, `--radius-md: 8px`, `--radius-lg: 12px`, `--radius-xl: 16px`
+
+**Penggunaan di komponen:** `rounded-[var(--radius-lg)]`, `shadow-[var(--shadow-md)]`, dst.
+
+### 7.4 Referensi Mood
 
 - [Linear](https://linear.app) — neutral + indigo, dark mode ikonik
 - [Stripe](https://stripe.com) — putih bersih, aksen indigo/blue
 - [Notion](https://www.notion.so) — monokrom dominan, warna hanya utk status/aksi
+- **design.png** — referensi visual SaaS landing page dengan skema hijau tua, dashboard preview, feature sections dengan ikon
 
 ---
 
@@ -453,13 +542,82 @@ Merujuk ke `openapi.yaml` (root repo) — endpoint berikut dipakai di MVP. Semua
 | 9   | Rules = milik user (global), assignable ke banyak device                                                                                                                                        | ✅ Approved |
 | 10  | Pricing/billing ditunda (late)                                                                                                                                                                  | ✅ Approved |
 | 11  | Dark + light mode (keduanya)                                                                                                                                                                    | ✅ Approved |
-| 12  | Mood clean & professional; slate 80% + indigo 20% + semantic; **Inter** via `next/font`                                                                                                         | ✅ Approved |
-| 13  | Status device di-polling (2–3 dtk) dari bot (`GET /devices/{id}/status`); upgrade WebSocket `/ws` nanti                                                                                         | ✅ Approved |
+| 12  | Mood clean & professional; **Emerald** primary (`#34D399`) + slate neutral + semantic colors; **Inter** via `next/font/google`                                                                    | ✅ Approved |
+| 13  | Status device di-polling (3 detik) dari bot (`GET /devices/{id}/status`); upgrade WebSocket `/ws` nanti                                                                                         | ✅ Approved |
 | 14  | Bot service = image **`go-whatsapp-web-multidevice`** (API di `openapi.yaml`); device slot pakai `device_id`                                                                                    | ✅ Approved |
 | 15  | **Rule engine dijalankan di Next.js** (webhook receiver `/api/webhook/gowa`): verify HMAC → evaluasi rules → auto-reply via `POST /send/message` → tulis `logs`. Bot hanya kirim webhook events | ✅ Approved |
 | 16  | QR login = `qr_link` (URL) dari `GET /devices/{id}/login`; dirender via **proxy server-side** (Basic Auth); ada opsi pairing code                                                               | ✅ Approved |
 | 17  | Landing page (`/`) + auth gabung di `/auth` (split layout, tab Masuk/Daftar); route group `(marketing)` / `(auth)` / `(app)`; newsletter → tabel `newsletters` (insert publik)                    | ✅ Approved |
 | 18  | **Server actions hanya di `src/server/actions/`** (`"use server"`); file frontend tidak boleh berisi `"use server"` — cukup panggil method                                                               | ✅ Approved |
+| 19  | Tailwind CSS v4 (tanpa config file); CSS custom properties sebagai design tokens; `@theme inline` untuk mapping ke utility classes                                                              | ✅ Approved |
+| 20  | React Compiler enabled via `babel-plugin-react-compiler` + `reactCompiler: true` di `next.config.ts`                                                                                            | ✅ Approved |
+| 21  | Middleware entry point: `src/proxy.ts` (bukan `middleware.ts` bawaan Next.js)                                                                                                                    | ✅ Approved |
+| 22  | Toast notification pakai **sonner** (bukan sonner-as-toast atau library lain)                                                                                                                   | ✅ Approved |
+
+---
+
+## 9. Status Implementasi (Codebase Audit)
+
+> Dokumen ini di-update pada **27 Agustus 2026** berdasarkan analisis menyeluruh terhadap codebase aktual.
+
+### 9.1 Fitur MVP — Status
+
+| Fitur                         | Status         | Lokasi                              | Catatan                                           |
+| ----------------------------- | -------------- | ----------------------------------- | ------------------------------------------------- |
+| Auth (email + password)       | ✅ Implemented | `(auth)/auth/page.tsx`              | Login + Register, tab switcher                    |
+| Auth (Google OAuth)           | ✅ Implemented | `(auth)/auth/page.tsx`              | `signInWithOAuth` → redirect `/devices`           |
+| Route protection (middleware) | ✅ Implemented | `src/proxy.ts` + `lib/supabase/middleware.ts` | Protects `/devices`, `/rules`, `/logs`    |
+| Landing page                  | ✅ Implemented | `(marketing)/page.tsx`              | Hero, features, how-it-works, creator, newsletter |
+| Navbar (marketing)            | ✅ Implemented | `components/navbar.tsx`             | Sticky, mobile hamburger, ThemeToggle             |
+| Footer (marketing)            | ✅ Implemented | `components/footer.tsx`             | Static footer                                      |
+| Theme toggle (dark/light)     | ✅ Implemented | `components/theme-toggle.tsx`       | `next-themes`, CSS transitions                    |
+| Device list                   | ✅ Implemented | `(app)/devices/page.tsx`            | CRUD, status badges, polling                      |
+| Device add + QR connect       | ✅ Implemented | `(app)/devices/page.tsx`            | Modal + QR image + auto-refresh                   |
+| Device delete                 | ✅ Implemented | `(app)/devices/page.tsx`            | Confirmation modal                                |
+| Rules CRUD                    | ✅ Implemented | `(app)/rules/page.tsx`              | Create, edit, delete, toggle                      |
+| Rules — action type           | ✅ Implemented | `(app)/rules/page.tsx`              | `listen` / `auto_reply`                           |
+| Rules — trigger type          | ✅ Implemented | `(app)/rules/page.tsx`              | `keyword` / `regex`                               |
+| Logs timeline                 | ✅ Implemented | `(app)/logs/page.tsx`               | Timeline + filters (device, event type)           |
+| Newsletter subscription       | ✅ Implemented | `components/marketing/newsletter-form.tsx` | Server action → `newsletters` table         |
+| GOWA bot proxy                | ✅ Implemented | `lib/gowa.ts`                       | Basic Auth, X-Device-Id header                    |
+| Webhook receiver              | ✅ Implemented | `api/webhook/gowa/route.ts`         | HMAC verification, rule evaluation                |
+| UI primitives                 | ✅ Implemented | `components/ui/`                     | Button, Input, Badge, Modal, Toggle, etc.         |
+| Design tokens (CSS)           | ✅ Implemented | `globals.css`                       | Shadow, radius, color, font variables             |
+| Supabase RLS                  | ✅ Implemented | `supabase/migrations/001_*.sql`     | All tables have RLS policies                      |
+| Database schema               | ✅ Implemented | `supabase/migrations/001_*.sql`     | 6 tables + triggers + indexes                     |
+
+### 9.2 Fitur yang Belum Diimplementasi (dari Spec)
+
+| Fitur                          | Status           | Catatan                                                  |
+| ------------------------------ | ---------------- | -------------------------------------------------------- |
+| "Lupa password?" link          | ❌ Not in UI     | Belum ada di auth page; bisa ditambahkan via Supabase Auth |
+| Device Settings → Rules assign | ❌ Not in UI     | Tabel `device_rules` ada di DB, tapi belum ada UI manage |
+| Device role display            | ❌ Not in UI     | Kolom `role` ada di DB, tidak ditampilkan di UI          |
+| Zod validation                 | ⚠️ Installed     | `zod@4.4.3` sudah install tapi belum dipakai di code    |
+| WebSocket for status           | ❌ Not implemented | Masih pakai polling (3 detik); WebSocket direncanakan    |
+| Pairing code login             | ⚠️ Partial       | `loginDeviceWithCode()` ada di server actions, belum ada UI |
+
+### 9.3 Ketidaksesuaian Spec vs Implementasi
+
+| Item Spec                      | Implementasi Aktual                                      |
+| ------------------------------ | -------------------------------------------------------- |
+| Primary warna **Indigo** `#4F46E5` | Primary warna **Emerald** `#34D399` (lebih cocok untuk brand WhatsApp) |
+| Auth: "Lupa password?" link    | Tidak ada di UI                                           |
+| Device: "Settings" menu        | Tidak ada — hanya Connect/Disconnect/Delete               |
+| Device: "tanggal dibuat"       | Tidak ditampilkan; hanya nama + device ID                 |
+| Rules: "assign ke device"      | Tidak ada di UI (hanya ada di DB schema)                  |
+| Landing: "Intro singkat proyek" | Diganti menjadi "How it works" (3 langkah)              |
+| Landing: Hero preview          | Ditambahkan `HeroPreview` (mockup Devices screen) — tidak disebut di spec lama |
+
+### 9.4 Design Reference (`design.png`)
+
+File `design.png` di `.agents/` menunjukkan desain landing page untuk produk "Slick — SaaS Management Made Simple" dengan:
+
+- **Skema warna:** Dark green/teal (selaras dengan primary Emerald `#34D399` yang diimplementasi)
+- **Layout:** Hero dengan dashboard preview, features dengan ikon, pricing, testimonials, FAQ
+- **Karakter:** SaaS clean, professional, modern — sesuai mood "clean & professional" di spec
+
+> **Kesimpulan:** `design.png` adalah referensi visual/inspirasi, bukan wireframe eksak untuk wenderdotnet. Implementasi aktual mengikuti spec coldstart.md dengan penyesuaian warna (Emerald bukan Indigo) dan beberapa deviation yang tercatat di atas.
 
 ---
 

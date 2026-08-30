@@ -5,12 +5,20 @@ import { gowa } from "@/lib/gowa";
 interface WebhookPayload {
   event?: string;
   device_id?: string;
+  session_id?: string;
   payload?: {
     id?: string;
+    chat_id?: string;
     from?: string;
     push_name?: string;
+    sender_display_name?: string;
+    from_name?: string;
+    sender?: string;
+    body?: string;
     message?: string;
     text?: string;
+    ids?: string[];
+    receipt_type?: string;
     [key: string]: unknown;
   } | null;
 }
@@ -59,7 +67,7 @@ export async function POST(request: Request) {
 
 async function processWebhookEvent(payload: WebhookPayload) {
   const eventType = payload?.event;
-  const deviceId = payload?.device_id;
+  const deviceId = payload?.session_id ?? payload?.device_id;
 
   if (!eventType || !deviceId) {
     return NextResponse.json({ ok: true });
@@ -85,11 +93,16 @@ async function processWebhookEvent(payload: WebhookPayload) {
     user_id: userId,
     device_key: deviceId,
     event_type: mapEventType(eventType),
-    chat_jid: payload?.payload?.from || null,
-    chat_name: payload?.payload?.push_name || null,
-    sender_jid: payload?.payload?.sender || null,
-    sender_name: null,
-    body: payload?.payload?.message || payload?.payload?.text || null,
+    chat_jid: payload?.payload?.chat_id || payload?.payload?.from || null,
+    chat_name:
+      payload?.payload?.sender_display_name ||
+      payload?.payload?.from_name ||
+      payload?.payload?.push_name ||
+      null,
+    sender_jid: payload?.payload?.from || null,
+    sender_name:
+      payload?.payload?.sender_display_name || payload?.payload?.from_name || null,
+    body: extractBody(payload?.payload, eventType),
     metadata: payload?.payload || null,
   });
 
@@ -109,8 +122,9 @@ async function processMessageEvent(
   if (!messagePayload) return;
 
   const supabase = createServiceClient();
-  const from = messagePayload.from || "";
-  const text = messagePayload.message || messagePayload.text || "";
+  const from = messagePayload.chat_id || messagePayload.from || "";
+  const text = messagePayload.body || messagePayload.message || messagePayload.text || "";
+  const senderName = messagePayload.sender_display_name || messagePayload.from_name || null;
 
   // Determine if it's a group or private chat
   const isGroup = from.endsWith("@g.us");
@@ -149,7 +163,7 @@ async function processMessageEvent(
           device_key: deviceId,
           event_type: "auto_read",
           chat_jid: from,
-          body: `Auto-read di ${isGroup ? "grup" : "chat"} ${messagePayload.push_name || from}`,
+          body: `Auto-read di ${isGroup ? "grup" : "chat"} ${senderName || from}`,
         });
       } catch {
         // silent
@@ -186,7 +200,7 @@ async function processMessageEvent(
             device_key: deviceId,
             event_type: "auto_reply_sent",
             chat_jid: from,
-            chat_name: messagePayload.push_name || null,
+            chat_name: senderName,
             body: singleRule.reply,
           });
         } catch {
@@ -195,6 +209,19 @@ async function processMessageEvent(
       }
     }
   }
+}
+
+function extractBody(
+  p: NonNullable<WebhookPayload["payload"]> | null | undefined,
+  event?: string
+): string | null {
+  if (!p) return null;
+  const text = p.body || p.message || p.text;
+  if (text) return text;
+  if (event === "message.ack" && Array.isArray(p.ids) && p.ids.length > 0) {
+    return `ACK ${p.receipt_type || "receipt"} (${p.ids.join(", ")})`;
+  }
+  return null;
 }
 
 function mapEventType(event: string): string {

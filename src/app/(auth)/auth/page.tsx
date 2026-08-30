@@ -60,10 +60,13 @@ export default function AuthForm() {
       return;
     }
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: {
+        data: { full_name: fullName },
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/devices`,
+      },
     });
 
     if (error) {
@@ -72,15 +75,23 @@ export default function AuthForm() {
       return;
     }
 
-    toast.success("Akun berhasil dibuat! Cek email untuk verifikasi.");
-    setTab("login");
+    if (data.session) {
+      toast.success("Berhasil daftar!");
+      router.push("/devices");
+      router.refresh();
+    } else {
+      toast.success("Akun berhasil dibuat! Cek email untuk verifikasi.");
+      setTab("login");
+    }
     setLoading(false);
   }
 
   async function handleGoogleLogin() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/devices` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=/devices`,
+      },
     });
   }
 
@@ -100,7 +111,10 @@ export default function AuthForm() {
       {/* Tab switcher */}
       <div className="mb-6 flex rounded-[var(--radius-md)] border border-border bg-surface-subtle p-1">
         <button
-          onClick={() => { setTab("login"); setError(""); }}
+          onClick={() => {
+            setTab("login");
+            setError("");
+          }}
           className={`flex-1 rounded-[var(--radius-sm)] py-1.5 text-sm font-medium transition-colors ${
             tab === "login"
               ? "bg-surface text-text-primary shadow-sm"
@@ -110,7 +124,10 @@ export default function AuthForm() {
           Masuk
         </button>
         <button
-          onClick={() => { setTab("register"); setError(""); }}
+          onClick={() => {
+            setTab("register");
+            setError("");
+          }}
           className={`flex-1 rounded-[var(--radius-sm)] py-1.5 text-sm font-medium transition-colors ${
             tab === "register"
               ? "bg-surface text-text-primary shadow-sm"
@@ -122,7 +139,10 @@ export default function AuthForm() {
       </div>
 
       {error && (
-        <div role="alert" className="mb-4 rounded-[var(--radius-md)] bg-error/10 p-3 text-sm text-error-strong">
+        <div
+          role="alert"
+          className="mb-4 rounded-[var(--radius-md)] bg-error/10 p-3 text-sm text-error-strong"
+        >
           {error}
         </div>
       )}
@@ -198,7 +218,10 @@ export default function AuthForm() {
           <>
             Belum punya akun?{" "}
             <button
-              onClick={() => { setTab("register"); setError(""); }}
+              onClick={() => {
+                setTab("register");
+                setError("");
+              }}
               className="font-medium text-primary hover:text-primary-hover transition-colors"
             >
               Daftar
@@ -208,7 +231,10 @@ export default function AuthForm() {
           <>
             Sudah punya akun?{" "}
             <button
-              onClick={() => { setTab("login"); setError(""); }}
+              onClick={() => {
+                setTab("login");
+                setError("");
+              }}
               className="font-medium text-primary hover:text-primary-hover transition-colors"
             >
               Masuk

@@ -41,8 +41,14 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  const pathname = request.nextUrl.pathname;
+
   // Redirect logged-in users away from auth
-  if (request.nextUrl.pathname.startsWith("/auth") && user) {
+  if (
+    pathname.startsWith("/auth") &&
+    !pathname.startsWith("/auth/callback") &&
+    user
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/devices";
     return NextResponse.redirect(url);

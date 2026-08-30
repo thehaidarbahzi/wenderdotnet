@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 
 export function DeviceStackVisual() {
   return (
-    <div className="relative mx-auto w-full max-w-sm py-6">
+    <div className="relative mx-auto w-full max-w-sm overflow-hidden py-6">
       {/* QR connect panel (back layer) */}
       <div className="absolute left-0 top-0 w-44 rotate-[-4deg] rounded-[var(--radius-lg)] border border-border bg-surface p-4 shadow-md">
         <div className="grid h-28 place-items-center rounded-[var(--radius-md)] border border-dashed border-border bg-surface-subtle">

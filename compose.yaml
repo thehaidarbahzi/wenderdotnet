@@ -1,7 +1,7 @@
 name: whatsapp-bbj
 services:
   whatsapp:
-    image: docker.io/aldinokemal2104/go-whatsapp-web-multidevice
+    image: docker.io/aldinokemal2104/go-whatsapp-web-multidevice:v9.2.2
     container_name: container-whatsapp
     restart: always
     ports:

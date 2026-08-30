@@ -9,7 +9,7 @@ import { WMark } from "@/components/logo";
  */
 export function HeroPreview() {
   return (
-    <div className="relative mx-auto mt-14 max-w-3xl sm:mt-16">
+    <div className="relative mx-auto mt-14 max-w-3xl overflow-visible sm:mt-16">
       <div
         aria-hidden
         className="absolute -inset-x-8 -top-10 bottom-0 rounded-[var(--radius-xl)] bg-primary/15 blur-3xl dark:bg-primary/20"

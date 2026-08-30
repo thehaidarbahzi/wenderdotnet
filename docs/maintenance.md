@@ -22,7 +22,7 @@ These come from the approved spec (`.agents/coldstart.md` §2.9). Breaking them 
 
 - Marketing pages get navbar/footer automatically from `src/app/(marketing)/layout.tsx`.
 - App pages get the topbar from `src/app/(app)/layout.tsx`.
-- Every data-driven view needs empty, loading (skeleton), and error states — see `/devices` for the pattern.
+- Every data-driven view needs empty, loading (skeleton), and error states; see `/devices` for the pattern.
 - Any link you add must point to something that exists.
 
 ### Database changes
@@ -33,13 +33,14 @@ These come from the approved spec (`.agents/coldstart.md` §2.9). Breaking them 
 
 ### Modifying the rule engine / webhook
 
-The receiver is `src/app/api/webhook/gowa/route.ts`. Flow: verify HMAC signature → resolve user by device → load enabled rules for that device → for `listen` rules optionally auto-read; for `auto_reply` rules match keyword/regex and send via `POST /send/message` → append to `logs`.
+The receiver is `src/app/api/webhook/gowa/route.ts`. Flow: verify HMAC signature → resolve user by device (`session_id`, falling back to `device_id`) → load enabled rules for that device → for `listen` rules optionally auto-read; for `auto_reply` rules match keyword/regex and send via `POST /send/message` → append to `logs`.
 
 When touching it:
 
 - Keep HMAC verification first; reject unsigned payloads early.
 - Wrap rule evaluation so one failing rule cannot block logging of the event.
 - Respect the event-type contract in the `logs.event_type` CHECK constraint.
+- Keep it aligned with the **current** GOWA webhook payload (v8+): device key = `session_id`, chat scope = `payload.chat_id`, sender = `payload.from`, text = `payload.body` (ack receipts carry `payload.ids` + `payload.receipt_type`). Re-check against `openapi.yaml`/upstream `docs/webhook-payload.md` before changing field names.
 
 ### Updating dependencies
 

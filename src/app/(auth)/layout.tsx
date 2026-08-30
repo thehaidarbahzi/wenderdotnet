@@ -28,12 +28,13 @@ export default async function AuthLayout({
 
   return (
     <div className="flex min-h-screen">
-      {/* Left: brand panel (indigo is the product's primary; deep shade keeps white text at AA contrast) */}
+      {/* Left: brand panel */}
       <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-primary p-10 lg:flex xl:p-14">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary-hover via-primary to-[#3730a3]"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary-hover via-primary to-emerald-900"
         />
+        {/* Decorative glow orb: adds depth to the brand panel, draws eye to the left side hierarchy */}
         <div aria-hidden className="absolute -bottom-32 -right-24 h-96 w-96 rounded-full bg-white/5 blur-2xl" />
 
         <div className="relative flex items-center gap-2">

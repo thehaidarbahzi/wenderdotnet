@@ -17,8 +17,8 @@
   --success-strong: #1e4d3b;
   --warning: #d97706;
   --warning-strong: #b45309;
-  --error: #e11d48;
-  --error-strong: #be123c;
+  --error: #dc2626;
+  --error-strong: #991b1b;
   --info: #2563eb;
   --info-strong: #1d4ed8;
   --whatsapp: #25d366;
@@ -47,8 +47,8 @@
   --success-strong: #6ee7b7;
   --warning: #fbbf24;
   --warning-strong: #fcd34d;
-  --error: #fb7185;
-  --error-strong: #fda4af;
+  --error: #f87171;
+  --error-strong: #fca5a5;
   --info: #60a5fa;
   --info-strong: #93c5fd;
   --whatsapp: #25d366;
@@ -154,4 +154,89 @@ html {
 
 .animate-modal {
   animation: modal-pop 0.18s ease-out;
+}
+
+/* Scroll reveal animation — purpose: guide eye to content as it enters viewport */
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes reveal-left {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes reveal-right {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes reveal-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Scroll reveal classes — use with intersection observer */
+.animate-reveal {
+  animation: reveal-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-reveal-left {
+  animation: reveal-left 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-reveal-right {
+  animation: reveal-right 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-reveal-scale {
+  animation: reveal-scale 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Stagger delays for sequential reveals */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* Identity motif — emerald accent line used across sections */
+.accent-line {
+  position: relative;
+}
+
+.accent-line::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(to bottom, var(--primary), var(--primary-hover));
+  border-radius: 2px;
 }

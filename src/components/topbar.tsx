@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { useState } from "react";
+import { LogOut, Menu, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Wordmark } from "@/components/logo";
+import { WMark } from "@/components/logo";
 
 const navLinks = [
   { href: "/devices", label: "Devices" },
@@ -17,8 +18,11 @@ const navLinks = [
 export function Topbar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const close = () => setOpen(false);
 
   async function handleLogout() {
+    close();
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/auth");
@@ -27,62 +31,95 @@ export function Topbar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-surface/85 backdrop-blur-sm">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-8">
-          <Wordmark href="/devices" />
-          <nav aria-label="Utama" className="hidden items-center gap-1 sm:flex">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                aria-current={pathname === link.href ? "page" : undefined}
-                className={cn(
-                  "rounded-[var(--radius-sm)] px-3 py-2 text-sm font-medium transition-colors",
-                  pathname === link.href
-                    ? "bg-primary-subtle text-primary"
-                    : "text-text-secondary hover:text-text-primary hover:bg-surface-subtle"
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
+      <div className="mx-auto flex h-16 max-w-6xl items-center px-4 sm:px-6 lg:px-8">
+        {/* Left — brand (flex-1) */}
+        <div className="flex flex-1 items-center">
+          <Link href="/devices" onClick={close} className="flex items-center gap-2">
+            <WMark className="h-5 w-5 text-[#34D399]" />
+            <span className="text-base font-semibold tracking-tight text-text-primary">wenderdotnet</span>
+          </Link>
         </div>
-        <div className="flex items-center gap-1.5">
+
+        {/* Center — desktop nav, truly centered via flex-1 siblings */}
+        <nav aria-label="Utama" className="hidden items-center gap-1 sm:flex">
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              aria-current={pathname === link.href ? "page" : undefined}
+              className={cn(
+                "rounded-[var(--radius-sm)] px-3 py-2 text-sm font-medium transition-colors",
+                pathname === link.href
+                  ? "bg-primary-subtle text-primary"
+                  : "text-text-secondary hover:text-text-primary hover:bg-surface-subtle"
+              )}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Right — actions (flex-1, justify-end) so center stays centered */}
+        <div className="flex flex-1 items-center justify-end gap-1.5 sm:gap-2">
           <ThemeToggle />
+
+          {/* Logout — icon on desktop like before, hidden on mobile (moved into dropdown) */}
           <button
             type="button"
             onClick={handleLogout}
             aria-label="Keluar dari akun"
             title="Keluar"
-            className="grid h-9 w-9 place-items-center rounded-[var(--radius-sm)] text-text-muted transition-colors hover:bg-error/10 hover:text-error-strong"
+            className="hidden h-9 w-9 place-items-center rounded-[var(--radius-sm)] text-text-muted transition-colors hover:bg-error/10 hover:text-error-strong sm:grid"
           >
             <LogOut className="h-4 w-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+            aria-label={open ? "Tutup menu" : "Buka menu"}
+            className="-mr-2 grid h-10 w-10 place-items-center rounded-[var(--radius-sm)] text-text-secondary transition-colors hover:bg-surface-subtle hover:text-text-primary sm:hidden"
+          >
+            {open ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
           </button>
         </div>
       </div>
 
-      {/* Mobile nav row: the three app sections stay reachable on small screens */}
-      <nav
-        aria-label="Navigasi perangkat"
-        className="flex gap-1 border-t border-border px-3 pb-2 pt-1.5 sm:hidden"
-      >
-        {navLinks.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            aria-current={pathname === link.href ? "page" : undefined}
-            className={cn(
-              "flex h-11 flex-1 items-center justify-center rounded-[var(--radius-sm)] text-sm font-medium transition-colors",
-              pathname === link.href
-                ? "bg-primary-subtle text-primary"
-                : "text-text-secondary"
-            )}
-          >
-            {link.label}
-          </Link>
-        ))}
-      </nav>
+      {/* Mobile menu — replicate Navbar's dropdown pattern (not the old second-row) */}
+      {open && (
+        <div className="border-t border-border bg-surface sm:hidden">
+          <div className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-4 sm:px-6 lg:px-8">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={close}
+                aria-current={pathname === link.href ? "page" : undefined}
+                className={cn(
+                  "rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-medium transition-colors",
+                  pathname === link.href
+                    ? "bg-primary-subtle text-primary"
+                    : "text-text-secondary hover:bg-surface-subtle hover:text-text-primary"
+                )}
+              >
+                {link.label}
+              </Link>
+            ))}
+
+            <div className="mt-2 border-t border-border pt-3">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex w-full items-center gap-2.5 rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-medium text-text-muted transition-colors hover:bg-error/10 hover:text-error-strong"
+              >
+                <LogOut className="h-4 w-4" />
+                Keluar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
