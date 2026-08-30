@@ -54,5 +54,19 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // 404 auto-redirect: unknown routes -> landing or /devices if authenticated
+  // Known prefixes: /, /auth, /devices, /rules, /logs, /api, /icon.svg
+  const knownPrefixes = ["/", "/auth", "/devices", "/rules", "/logs", "/api", "/icon.svg"];
+  const isKnown =
+    pathname === "/" ||
+    knownPrefixes.some((p) => p !== "/" && pathname.startsWith(p));
+
+  if (!isKnown) {
+    const url = request.nextUrl.clone();
+    url.pathname = user ? "/devices" : "/";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
   return supabaseResponse;
 }
