@@ -91,9 +91,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Filter device_keys to only those owned by this user (per-user isolation + anti-hijack)
+  // Even though device_rules RLS in 002 checks user_owns_device(), service client bypasses RLS so we must filter in JS
+  let safeKeys: string[] = [];
   if (device_keys && device_keys.length > 0) {
+    const { data: owned } = await service
+      .from("user_devices")
+      .select("device_key")
+      .eq("user_id", user.id)
+      .in("device_key", device_keys);
+    const ownedSet = new Set((owned ?? []).map((r) => r.device_key));
+    safeKeys = device_keys.filter((k) => ownedSet.has(k));
+    if (safeKeys.length !== device_keys.length) {
+      console.warn(`POST /api/rules: filtered ${device_keys.length - safeKeys.length} unowned device_keys for user ${user.id}`);
+    }
+  }
+
+  if (safeKeys.length > 0) {
     const { error: drError } = await service.from("device_rules").insert(
-      device_keys.map((dk) => ({
+      safeKeys.map((dk) => ({
         device_key: dk,
         rule_id: rule.id,
         enabled: true,
@@ -149,11 +165,30 @@ export async function PUT(request: Request) {
   }
 
   if (device_keys) {
+    // Verify this rule still belongs to caller after update (defense if .eq user_id was bypassed)
+    const { data: check } = await service.from("rules").select("user_id").eq("id", id).single();
+    if (!check || check.user_id !== user.id) {
+      return NextResponse.json({ error: "Rule tidak ditemukan atau bukan milik Anda" }, { status: 403 });
+    }
+    // Only allow attaching to devices owned by this user
+    let safeKeys: string[] = [];
+    if (device_keys.length > 0) {
+      const { data: owned } = await service
+        .from("user_devices")
+        .select("device_key")
+        .eq("user_id", user.id)
+        .in("device_key", device_keys);
+      const ownedSet = new Set((owned ?? []).map((r) => r.device_key));
+      safeKeys = device_keys.filter((k) => ownedSet.has(k));
+      if (safeKeys.length !== device_keys.length) {
+        console.warn(`PUT /api/rules: filtered ${device_keys.length - safeKeys.length} unowned device_keys for user ${user.id}`);
+      }
+    }
     await service.from("device_rules").delete().eq("rule_id", id);
 
-    if (device_keys.length > 0) {
+    if (safeKeys.length > 0) {
       const { error: drError } = await service.from("device_rules").insert(
-        device_keys.map((dk) => ({
+        safeKeys.map((dk) => ({
           device_key: dk,
           rule_id: id,
           enabled: true,

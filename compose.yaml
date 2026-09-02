@@ -1,8 +1,8 @@
-name: whatsapp-bbj
+name: wenderdotnet-whatsapp-backend
 services:
   whatsapp:
     image: docker.io/aldinokemal2104/go-whatsapp-web-multidevice:v9.2.2
-    container_name: container-whatsapp
+    container_name: wenderdotnet-whatsapp-backend-container
     restart: always
     ports:
       - "${WHATSAPP_PORT:?error}:3000"

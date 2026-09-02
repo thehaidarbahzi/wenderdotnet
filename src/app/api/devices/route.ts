@@ -3,6 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { gowa } from "@/lib/gowa";
 import type { GowaResponse, DeviceInfo } from "@/types";
 
+export const dynamic = "force-dynamic";
+
+// Prod: single GOWA call + parallel status fetch. Jangan fetch /devices per loop (N+1).
+// Cache-control: no-store karena status live, tapi frontend boleh SWR 10-15s.
 export async function GET() {
   const supabase = await createClient();
   const {
@@ -22,47 +26,41 @@ export async function GET() {
     return NextResponse.json({ devices: [] });
   }
 
-  const devices = [];
-
-  for (const ud of userDevices) {
-    try {
-      const botDevices = await gowa<GowaResponse<DeviceInfo[]>>({
-        path: "/devices",
-      });
-      const botDevice = botDevices.results?.find(
-        (d) => d.id === ud.device_key
-      );
-
-      let state = "disconnected";
-      if (botDevice) {
-        try {
-          const status = await gowa<
-            GowaResponse<{ is_connected: boolean; is_logged_in: boolean }>
-          >({
-            path: `/devices/${ud.device_key}/status`,
-          });
-          if (status.results?.is_logged_in) state = "logged_in";
-          else if (status.results?.is_connected) state = "connecting";
-        } catch {
-          // status check failed
-        }
-      }
-
-      devices.push({
-        id: ud.device_key,
-        display_name: ud.name,
-        state,
-      });
-    } catch {
-      devices.push({
-        id: ud.device_key,
-        display_name: ud.name,
-        state: "disconnected",
-      });
-    }
+  // 1) Single fetch daftar device di GOWA (1 call, bukan N)
+  let botDeviceIds = new Set<string>();
+  try {
+    const botDevices = await gowa<GowaResponse<DeviceInfo[]>>({ path: "/devices" });
+    botDeviceIds = new Set((botDevices.results ?? []).map((d) => d.id));
+  } catch {
+    // GOWA down -> semua dianggap disconnected, tetap return 200 agar UI tidak error
   }
 
-  return NextResponse.json({ devices });
+  // 2) Parallel fetch status per device yang ada di GOWA (max concurrency = all, GOWA ringan)
+  const devices = await Promise.all(
+    userDevices.map(async (ud) => {
+      if (!botDeviceIds.has(ud.device_key)) {
+        return { id: ud.device_key, display_name: ud.name, state: "disconnected" as const };
+      }
+      try {
+        const status = await gowa<GowaResponse<{ is_connected: boolean; is_logged_in: boolean }>>({
+          path: `/devices/${ud.device_key}/status`,
+        });
+        const state = status.results?.is_logged_in
+          ? ("logged_in" as const)
+          : status.results?.is_connected
+            ? ("connecting" as const)
+            : ("disconnected" as const);
+        return { id: ud.device_key, display_name: ud.name, state };
+      } catch {
+        return { id: ud.device_key, display_name: ud.name, state: "disconnected" as const };
+      }
+    })
+  );
+
+  return NextResponse.json(
+    { devices },
+    { headers: { "Cache-Control": "no-store, max-age=0" } }
+  );
 }
 
 export async function POST(request: Request) {
@@ -97,7 +95,19 @@ export async function POST(request: Request) {
     );
   }
 
-  // Return device info (NOT inserted into DB yet — that happens after login)
+  // Persist ownership in DB immediately (RLS: user_id = auth.uid())
+  // Kalau insert gagal (mis. duplicate), rollback slot di GOWA agar tidak orphan
+  const { error: dbError } = await supabase
+    .from("user_devices")
+    .insert({ user_id: user.id, device_key: deviceId, name });
+
+  if (dbError) {
+    try {
+      await gowa({ method: "DELETE", path: `/devices/${deviceId}` });
+    } catch {}
+    return NextResponse.json({ error: dbError.message }, { status: 500 });
+  }
+
   return NextResponse.json({
     device: { id: deviceId, name },
   });

@@ -33,7 +33,7 @@ export async function gowa<T = unknown>(
     headers["X-Device-Id"] = device_id;
   }
 
-  const init: RequestInit = { method, headers };
+  const init: RequestInit = { method, headers, cache: "no-store" };
 
   if (form) {
     init.body = form;
@@ -43,7 +43,10 @@ export async function gowa<T = unknown>(
   }
 
   const url = buildUrl(path, query);
-  const res = await fetch(url, init);
+  // Prod: 8s timeout agar API tidak hang kalau GOWA down; Next.js route tetap return disconnected
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  const res = await fetch(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(timeout));
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");

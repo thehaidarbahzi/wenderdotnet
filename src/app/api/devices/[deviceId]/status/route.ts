@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { gowa } from "@/lib/gowa";
 
 export async function GET(
@@ -7,17 +8,41 @@ export async function GET(
 ) {
   const { deviceId } = await params;
 
+  // Per-user isolation: only owner can check status
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { data: owned } = await supabase
+    .from("user_devices")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("device_key", deviceId)
+    .single();
+  if (!owned) return NextResponse.json({ error: "Device tidak ditemukan atau bukan milik Anda" }, { status: 403 });
+
   try {
     const result = await gowa<{
-      is_connected: boolean;
-      is_logged_in: boolean;
-      device_id: string;
-      jid: string;
+      results: { is_connected: boolean; is_logged_in: boolean; device_id: string; jid: string };
+      status: number;
+      code: string;
     }>({
       path: `/devices/${deviceId}/status`,
     });
 
-    return NextResponse.json(result);
+    // Normalisasi prod: tambah derived state agar frontend tidak hitung ulang
+    const r = result.results ?? (result as unknown as { is_connected: boolean; is_logged_in: boolean });
+    const is_connected = (r as { is_connected: boolean }).is_connected ?? false;
+    const is_logged_in = (r as { is_logged_in: boolean }).is_logged_in ?? false;
+    return NextResponse.json(
+      {
+        ...result,
+        state: is_logged_in ? "logged_in" : is_connected ? "connecting" : "disconnected",
+      },
+      { headers: { "Cache-Control": "no-store, max-age=0" } }
+    );
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Status check failed" },
