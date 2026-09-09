@@ -153,8 +153,11 @@ export default function LogsPage() {
         actions={
           <Button
             variant="secondary"
-            onClick={() => fetchLogs()}
+            onClick={() => { if (!loading) fetchLogs(); }}
+            disabled={loading}
+            loading={loading}
             aria-label="Muat ulang logs"
+            aria-busy={loading}
           >
             <RefreshCw className="h-4 w-4" />
             Refresh

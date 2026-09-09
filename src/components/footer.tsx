@@ -8,6 +8,11 @@ const FOOTER_LINKS = [
   { href: "/auth", label: "Masuk" },
 ];
 
+const LEGAL_LINKS = [
+  { href: "/privacy", label: "Kebijakan Privasi" },
+  { href: "/terms", label: "Syarat Layanan" },
+];
+
 export function Footer() {
   return (
     <footer className="border-t border-border bg-surface">
@@ -30,6 +35,22 @@ export function Footer() {
             <p className="text-sm font-medium text-text-primary">Navigasi</p>
             <ul className="mt-4 space-y-2.5 text-sm">
               {FOOTER_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-text-muted transition-colors hover:text-text-primary"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <nav aria-label="Legal">
+            <p className="text-sm font-medium text-text-primary">Legal</p>
+            <ul className="mt-4 space-y-2.5 text-sm">
+              {LEGAL_LINKS.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}

@@ -187,28 +187,28 @@ src/
 
 ### 4.1 Flow Utama
 
-1. **Buka app** → landing page (`/`): Hero CTA → `/auth`. Belum login → landing/`/auth`; route app (`/devices`, `/rules`, `/logs`) di-redirect ke `/auth`.
+1. **Buka app** → landing page (`/`): Hero CTA → `/auth`. Belum login → landing/`/auth`; route app (`/devices`, `/logs`) di-redirect ke `/auth` ( `/rules` dihapus di 004).
 2. **Auth** di `/auth` — tab "Masuk" / "Daftar" (email/password atau SSO Gmail) → Supabase Auth; row `users` dibuat otomatis via trigger.
 3. **Login sukses** → redirect ke `/devices` (Dashboard). List device kosong + tombol "Tambah Device".
 4. **User isi nama device** → `POST {BOT_API_URL}/devices` (bisa custom `device_id`) → bot buat device slot, state `disconnected` (belum ada di DB).
-5. **App panggil `GET {BOT_API_URL}/devices/{device_id}/login`** → balas `{qr_link, qr_duration}` → QR dirender di browser via **proxy server-side** (bot pakai Basic Auth, tidak bisa di-fetch langsung dari browser).
-6. **User scan QR** pakai WhatsApp (mirip WA Web) → bot update status internal → `connecting` → `logged_in`.
-7. **App listen status bot** (polling `GET /devices/{device_id}/status` tiap 2–3 detik; upgrade ke WebSocket `/ws?device_id=<id>` nanti).
-8. **Saat status = `logged_in`** → app insert row `user_devices(name, device_key=device_id)` → device resmi masuk DB, muncul di list.
-9. **Konfigurasi rules** di `/rules` (global, bisa di-assign ke banyak device).
-10. **Device berjalan** — bot kirim webhook events ke Next.js (`/api/webhook/gowa`); app verifikasi HMAC, evaluasi rules dari Supabase, eksekusi auto-read/auto-reply via `POST /send/message`, tulis `logs`; dashboard menampilkan timeline.
+5. **App panggil `GET {BOT_API_URL}/devices/{device_id}/login`** (atau `POST /login/code?phone=` untuk Kode) → balas `{qr_link, qr_duration}` / `{pair_code}` → dirender via `GET /api/devices/:id/login` (flat `qr_link`) — QR image public `http://BOT/statics/...` tanpa auth, polling auto-close.
+6. **User scan QR / input Kode** pakai WhatsApp (mirip WA Web) → bot update status internal → `connecting` → `logged_in`.
+7. **App listen status bot**: awal polling `GET /devices/:id/status` 3s untuk `connecting` + **global 5s `GET /api/devices` per-device** (visibility-aware, 1 call, bukan N+1) + auto-close modal ketika `logged_in`; WS `/ws?device_id` disiapkan sebagai fallback untuk instant disconnect (BOT_AUTH server-only jadi polling jadi utama).
+8. **Saat status = `logged_in`** → app insert row `user_devices(name, device_key=device_id)` → device resmi masuk DB, muncul di list (auto).
+9. **Konfigurasi di `/devices/[deviceId]` detail** (tab Webhook + Automasi) — bukan `/rules` lagi. Webhook per-device (`PATCH /devices/{id}/webhook` + Test dummy real), Automasi per-device (`device_automations` via `POST /api/devices/:id/automations`, trigger `prefix/contains/exact/regex` → `keyword/regex`, opsi `is_reply`/`mentions` `@everyone`/`duration`/`is_forwarded` per `openapi.yaml:1210`, target `group/private` + group picker `GET /user/my/groups` via `X-Device-Id`, cached 30s, virtual 100, duplicate per `target_jid`).
+10. **Device berjalan** — bot kirim webhook events ke Next.js (`/api/webhook/gowa`); app verifikasi HMAC, evaluasi `device_automations` per `device_key`, eksekusi via `POST /send/message` (mentions/duration/forwarded), tulis `logs`; dashboard menampilkan timeline.
 
 ### 4.2 Device Lifecycle (detail)
 
 ```
 1. User isi nama device
 2. App → POST {BOT_API_URL}/devices → bot buat device slot (state disconnected)
-3. App → GET /devices/{device_id}/login → {qr_link, qr_duration}
-4. QR ditampilkan (proxy server-side); device slot hidup di bot (BELUM ada row di DB)
-5. User scan → bot update status internal (connecting → logged_in)
-6. App LISTEN status bot (polling /devices/{device_id}/status, tiap 2–3 detik)
+3. App → GET /devices/{device_id}/login (QR) atau POST /login/code?phone= (Kode) → {qr_link/qr_duration} / {pair_code}
+4. QR/Kode ditampilkan (tab QR|Kode default QR); device slot hidup di bot (BELUM ada row di DB)
+5. User scan QR / input Kode di HP → bot update status internal (connecting → logged_in)
+6. App LISTEN status bot (3s polling connecting + 5s global GET /api/devices per-device, visibility-aware, auto-close modal)
 7. Saat status = logged_in → insert user_devices(name, device_key=device_id)
-8. Device masuk DB; muncul di list Devices
+8. Device masuk DB; muncul di list Devices (auto, tanpa reload)
 ```
 
 **Aturan wajib:**
@@ -268,46 +268,32 @@ Layout: **kiri = brand panel** (bg-primary gradient, headline, capabilities list
 
 ### 5.4 `/devices` (Dashboard) — `src/app/(app)/devices/page.tsx`
 
-1. Topbar global
-2. Heading "Devices" + subjudul "Kelola device WhatsApp Anda"
+1. Topbar global (Devices | Logs, Rules dihapus di 004)
+2. Heading "Devices" + subjudul "Kelola device WhatsApp Anda" + stats (Total/Terhubung/Butuh perhatian)
 3. Tombol primary "+ Tambah Device"
 4. Daftar kartu device (terbaru di atas), tiap kartu:
-   - Status badge (Connected/Connecting/Disconnected)
-   - Nama device (bold) + device ID (monospace, truncate)
-   - Tombol aksi: Connect (Plug icon) / Disconnect (Unplug icon)
-   - Tombol Delete (Trash2 icon, konfirmasi modal)
+   - Status badge (Connected/Connecting/Disconnected) + JID
+   - Nama device (bold, link ke `/devices/[deviceId]`) + device ID (monospace) + `Detail` link
+   - Tombol aksi: Hubungkan (Plug, tab QR/Kode, `loading+disabled` guard) / Disconnect (Unplug, `loading+disabled`) + Delete (Trash2, `loading+disabled`)
+   - Auto-refresh 5s per-device (visibility-aware, 1 call `GET /api/devices`, bukan N+1), auto-close QR modal ketika `logged_in`
 5. Empty state: QrCode icon + "Belum ada device" + CTA tambah
 6. Loading state: 3 skeleton cards
 
-**Modal "Tambah Device":** Heading → input "Nama Device" (placeholder "Contoh: Toko Online") → tombol "Buat" + "Batal".
+**Modal "Tambah Device":** Heading → input "Nama Device" → tombol "Buat & Hubungkan" (`loading+disabled`) + "Batal".
 
-**Modal "QR Connect":** Heading "Hubungkan WhatsApp" → instruksi scan → QR image (auto-refresh via polling setiap 3 detik) → status "Menunggu scan..." → tombol "Batal" + "Muat Ulang" (RefreshCw icon).
+**Modal "QR Connect" (tab QR/Kode, default QR):** Tabs `QR Code` (QrCode) / `Kode Pairing` (KeyRound) — `role="tablist"`. QR: instruksi scan → QR image (`GET /api/devices/:id/login` `qr_link` flat+wrapper) → status + `Muat Ulang` (`loading`). Kode: Input Nomor HP (`62812…`) → `Dapatkan Kode` (`POST /api/devices/:id/login/code?phone=`, `loading+disabled`) → tampil `pair_code` besar + `Copy/Check` + `Kode Baru`.
 
-**Modal "Hapus Device":** Konfirmasi + tombol "Hapus" (danger).
+**Modal "Hapus Device":** Konfirmasi + tombol "Hapus permanen" (`loading+disabled` anti double-click).
 
-### 5.5 `/rules` (Rules — global per user) — `src/app/(app)/rules/page.tsx`
+### 5.4b `/devices/[deviceId]` (Detail Device) — `src/app/(app)/devices/[deviceId]/page.tsx` (baru di 004)
 
-1. Topbar global
-2. Header: heading "Rules" + subjudul + tombol "+ Tambah Rule"
-3. Daftar rule (tiap item card):
-   - Nama rule + Badge action type (Listen/Auto Reply) + Badge Nonaktif (jika disabled)
-   - Ringkasan: target (group/private), pattern
-   - Toggle Enabled
-   - Tombol Edit (Pencil icon) + Hapus (Trash2 icon, konfirmasi modal)
-4. Empty state: "Belum ada rules" + deskripsi
+1. Header: Back link + nama + badge + JID + actions Hubungkan/Disconnect
+2. Tabs `Overview | Webhook | Automasi` (`role="tablist"`, `aria-selected`)
+3. **Overview:** Status (Signal/WiFiOff), Device ID, JID, auto-refresh 5s
+4. **Webhook:** Form `webhook_url*`, `webhook_secret`, `webhook_events`, `Skip TLS Verify` (`Toggle`) → `Simpan` (`PATCH /api/devices/:id/webhook` → `PATCH /devices/{id}/webhook` GOWA, `loading+disabled`) + `Test Kirim Dummy` (`POST /api/devices/:id/webhook/test` hit real `webhook_url`, tampil status/body, `loading+disabled`)
+5. **Automasi:** List per-device (`GET /api/devices/:id/automations`), card: nama + `trigger_category` (prefix/contains/exact/regex) + pattern→reply + badges `target_type/target_jid`, `is_reply`/`mentions`/`duration` + `Toggle enabled` (`loading` per row) + `Edit`/`Delete` (`loading+disabled`). **Tambah/Edit Modal:** Nama, Kategori (select), Tipe Target (Semua/Group/Private) → jika Group tampil **Group Picker** (`GET /api/devices/:id/groups` via `X-Device-Id`, cached 30s, limit 500 `openapi.yaml:1074`, search debounce, virtual 100, multi-select → **duplicate per grup** 1 automasi per `target_jid`), Pola, Balasan, checkbox `Reply`/`Forwarded`, Mentions (`@everyone,628xxx` per `openapi.yaml:1244`), Duration (0/86400/604800/7776000). Simpan `POST /api/devices/:id/automations` (array `target_jids` → N rows) atau `PUT /:id/:automationId`, semua `loading+disabled`.
 
-**Modal "Tambah/Edit Rule":**
-
-1. Input Nama rule
-2. Select Action type (`listen` / `auto_reply`)
-3. Select Target type (`Semua` / `Group` / `Private`)
-4. Input Target JID (placeholder "Contoh: 120363xxx@g.us")
-5. (auto_reply) Select Trigger type (`keyword` / `regex`) + Input Pattern + Textarea Reply
-6. (listen) Toggle Auto Read (default on)
-7. Toggle Aktif (default on)
-8. Tombol "Simpan" + "Batal"
-
-> **Catatan:** Assign rule ke device (checkbox/select) belum diimplementasi di UI — ada di tabel `device_rules` di DB tapi belum ada UI untuk manage.
+> **Rules global dihapus TOTAL** di `004_per_device_automations.sql` (DROP `rules`/`device_rules`), nav `Rules` dihapus dari `src/components/topbar.tsx:12`.
 
 ### 5.6 `/logs` (aktivitas bot) — `src/app/(app)/logs/page.tsx`
 
@@ -380,37 +366,29 @@ _Insert publik (anon) via RLS policy `USING (true) WITH CHECK (true)`; select ha
 
 **UNIQUE `(user_id, device_key)`** • Index `(user_id)`
 
-### `rules` (satu tabel penuh aturan, scoped per user)
+### `device_automations` (per-device, menggantikan `rules`+`device_rules` global — 004)
 
-| Kolom          | Tipe        | Constraint                                            |
-| -------------- | ----------- | ----------------------------------------------------- |
-| `id`           | uuid        | **PK**                                                |
-| `user_id`      | uuid        | NOT NULL, FK → `auth.users.id` ON DELETE CASCADE      |
-| `name`         | text        | NOT NULL (mis. "Auto-read grup promo")                |
-| `action_type`  | text        | NOT NULL, CHECK `IN ('listen','auto_reply')`          |
-| `target_type`  | text        | NULL, CHECK `IN ('group','private')`                  |
-| `target_jid`   | text        | NULL (**null = semua** chat dari target_type)         |
-| `trigger_type` | text        | NULL, CHECK `IN ('keyword','regex')` (utk auto_reply) |
-| `pattern`      | text        | NULL (utk auto_reply)                                 |
-| `reply`        | text        | NULL (utk auto_reply)                                 |
-| `auto_read`    | boolean     | NOT NULL, default `false` (utk listen)                |
-| `enabled`      | boolean     | NOT NULL, default `true`                              |
-| `created_at`   | timestamptz | NOT NULL, default `now()`                             |
-| `updated_at`   | timestamptz | NOT NULL, default `now()`                             |
+| Kolom              | Tipe        | Constraint                                                                 |
+| ------------------ | ----------- | -------------------------------------------------------------------------- |
+| `id`               | uuid        | **PK**                                                                     |
+| `user_id`          | uuid        | NOT NULL, FK → `auth.users.id` ON DELETE CASCADE                           |
+| `device_key`       | text        | NOT NULL (= device_id bot, FK implisit ke `user_devices.device_key`)       |
+| `name`             | text        | NOT NULL (mis. "Balas harga di Grup A")                                    |
+| `trigger_category` | text        | NOT NULL, CHECK `IN ('prefix','contains','exact','regex')` DEFAULT 'contains' |
+| `trigger_type`     | text        | NOT NULL, CHECK `IN ('keyword','regex')` DEFAULT 'keyword' (derived)       |
+| `pattern`          | text        | NOT NULL                                                                   |
+| `reply`            | text        | NOT NULL                                                                   |
+| `is_reply`         | boolean     | NOT NULL DEFAULT false (`openapi.yaml:1232` `reply_message_id`)            |
+| `mentions`         | text        | NULL, comma-separated `628xxx,@everyone` (`openapi.yaml:1244`)             |
+| `duration`         | integer     | NOT NULL DEFAULT 0 CHECK `IN (0,86400,604800,7776000)` (disappearing)      |
+| `is_forwarded`     | boolean     | NOT NULL DEFAULT false                                                     |
+| `target_type`      | text        | NULL, CHECK `IN ('group','private')` (null = semua)                       |
+| `target_jid`       | text        | NULL (1 grup per row — multi grup = duplicate per `target_jid`)           |
+| `enabled`          | boolean     | NOT NULL DEFAULT true                                                      |
+| `created_at`       | timestamptz | NOT NULL DEFAULT now()                                                     |
+| `updated_at`       | timestamptz | NOT NULL DEFAULT now()                                                     |
 
-Index `(user_id)`
-
-### `device_rules` (junction: rule ↔ device_key)
-
-| Kolom        | Tipe        | Constraint                                  |
-| ------------ | ----------- | ------------------------------------------- |
-| `id`         | uuid        | **PK**                                      |
-| `device_key` | text        | NOT NULL (= device_id bot)                  |
-| `rule_id`    | uuid        | NOT NULL, FK → `rules.id` ON DELETE CASCADE |
-| `enabled`    | boolean     | NOT NULL, default `true`                    |
-| `created_at` | timestamptz | NOT NULL, default `now()`                   |
-
-**UNIQUE `(device_key, rule_id)`** • Index `(rule_id)`
+Index `(user_id)`, `(device_key)`, `(device_key, enabled)` • **UNIQUE `(device_key, name, target_jid, pattern)`** • RLS `user_id=auth.uid() AND user_owns_device(device_key)` (via `002` helper). Grants `authenticated, service_role`. `rules`/`device_rules` sudah **DROP TOTAL** via `004_per_device_automations.sql`.
 
 ### `logs` (aktivitas bot — append-only)
 
@@ -434,11 +412,11 @@ _Append-only (tanpa `updated_at`)._ Index `(user_id, created_at DESC)`
 
 ```
 auth.users 1──1 users
-auth.users 1──N user_devices    (device_key = device_id bot)
-users      1──N rules
-rules      1──N device_rules    (device_key = device_id bot)
+auth.users 1──N user_devices          (device_key = device_id bot)
+user_devices 1──N device_automations  (device_key, per-device, 1 row = 1 target_jid)
 users      1──N logs
 newsletters  (standalone — tanpa FK)
+— rules/device_rules DROPPED di 004 (migrasi ke device_automations)
 ```
 
 **Semua FK anak: ON DELETE CASCADE.**
@@ -447,10 +425,10 @@ newsletters  (standalone — tanpa FK)
 
 - `users`: baris sendiri (`id = auth.uid()`)
 - `newsletters`: insert publik (anon); select hanya service key
-- `user_devices`: `user_id = auth.uid()`
-- `rules`: `user_id = auth.uid()`; `device_rules`: via `rules.user_id`
+- `user_devices`: `user_id = auth.uid()` (+ `webhook_*` columns dari `002`)
+- `device_automations`: `user_id = auth.uid() AND user_owns_device(device_key)` (via `002` helper)
 - `logs`: `user_id = auth.uid()`
-- **Next.js (webhook receiver) tulis `logs` via service key** (bypass RLS) saat memproses webhook events dari bot. Bot **tidak** menulis ke Supabase.
+- **Next.js (webhook receiver) tulis `logs` via service key** (bypass RLS) saat memproses webhook events dari bot (`device_automations` per `device_key`). Bot **tidak** menulis ke Supabase.
 
 ### API Contract — yang Next.js asumsikan dari Bot Service
 
@@ -560,42 +538,44 @@ Semua token sudah diimplementasi di `src/app/globals.css`:
 
 > Dokumen ini di-update pada **27 Agustus 2026** berdasarkan analisis menyeluruh terhadap codebase aktual.
 
-### 9.1 Fitur MVP — Status
+### 9.1 Fitur MVP — Status (diupdate 004)
 
 | Fitur                         | Status         | Lokasi                              | Catatan                                           |
 | ----------------------------- | -------------- | ----------------------------------- | ------------------------------------------------- |
-| Auth (email + password)       | ✅ Implemented | `(auth)/auth/page.tsx`              | Login + Register, tab switcher                    |
-| Auth (Google OAuth)           | ✅ Implemented | `(auth)/auth/page.tsx`              | `signInWithOAuth` → redirect `/devices`           |
-| Route protection (middleware) | ✅ Implemented | `src/proxy.ts` + `lib/supabase/middleware.ts` | Protects `/devices`, `/rules`, `/logs`    |
+| Auth (email + password)       | ✅ Implemented | `(auth)/auth/page.tsx`              | Login + Register, tab switcher, `loading+disabled` guard |
+| Auth (Google OAuth)           | ✅ Implemented | `(auth)/auth/page.tsx`              | `signInWithOAuth` → redirect `/devices`, `oauthLoading` guard |
+| Route protection (middleware) | ✅ Implemented | `src/proxy.ts` + `lib/supabase/middleware.ts` | Protects `/devices`, `/logs` (`/rules` dihapus 004) |
 | Landing page                  | ✅ Implemented | `(marketing)/page.tsx`              | Hero, features, how-it-works, creator, newsletter |
 | Navbar (marketing)            | ✅ Implemented | `components/navbar.tsx`             | Sticky, mobile hamburger, ThemeToggle             |
 | Footer (marketing)            | ✅ Implemented | `components/footer.tsx`             | Static footer                                      |
 | Theme toggle (dark/light)     | ✅ Implemented | `components/theme-toggle.tsx`       | `next-themes`, CSS transitions                    |
-| Device list                   | ✅ Implemented | `(app)/devices/page.tsx`            | CRUD, status badges, polling                      |
-| Device add + QR connect       | ✅ Implemented | `(app)/devices/page.tsx`            | Modal + QR image + auto-refresh                   |
-| Device delete                 | ✅ Implemented | `(app)/devices/page.tsx`            | Confirmation modal                                |
-| Rules CRUD                    | ✅ Implemented | `(app)/rules/page.tsx`              | Create, edit, delete, toggle                      |
-| Rules — action type           | ✅ Implemented | `(app)/rules/page.tsx`              | `listen` / `auto_reply`                           |
-| Rules — trigger type          | ✅ Implemented | `(app)/rules/page.tsx`              | `keyword` / `regex`                               |
-| Logs timeline                 | ✅ Implemented | `(app)/logs/page.tsx`               | Timeline + filters (device, event type)           |
+| Device list                   | ✅ Implemented | `(app)/devices/page.tsx`            | CRUD, badges, **5s per-device polling** (visibility-aware, 1 call), auto-close QR/code modal, `Detail` link, anti double-click |
+| Device add + QR/Code connect  | ✅ Implemented | `(app)/devices/page.tsx`            | Modal tab **QR** (`qr_link`) / **Kode** (`pair_code`), `loading+disabled` guard, auto-refresh |
+| Device detail                 | ✅ Implemented | `(app)/devices/[deviceId]/page.tsx` | Tabs **Overview/Webhook/Automasi**, status 5s polling, WS fallback |
+| Device Webhook                | ✅ Implemented | `/api/devices/[id]/webhook` + `/test` | Per-device `webhook_*` (PATCH GOWA), Test dummy real, guard |
+| Device Automasi               | ✅ Implemented | `/api/devices/[id]/automations` + `/[aid]` + `page.tsx` | Per-device `device_automations` (prefix/contains/exact/regex → keyword/regex, `is_reply`/`mentions` `@everyone`/duration/`is_forwarded`, `target_jid` 1 per row duplicate per grup), group picker `GET /groups` (X-Device-Id, cached 30s, search, virtual 100), guard |
+| Group picker                  | ✅ Implemented | `page.tsx` `GroupItem` | `GET /user/my/groups` 500 limit, cached, search debounce, multi-select |
+| Device delete                 | ✅ Implemented | `(app)/devices/page.tsx` + `[deviceId]` | Confirmation modal `loading+disabled` |
+| Rules (legacy)                | ❌ Removed     | `004_per_device_automations.sql` | **DROP TOTAL** `rules`/`device_rules`, diganti `device_automations` |
+| Logs timeline                 | ✅ Implemented | `(app)/logs/page.tsx`               | Timeline + filters, Refresh `loading+disabled` |
 | Newsletter subscription       | ✅ Implemented | `components/marketing/newsletter-form.tsx` | Server action → `newsletters` table         |
 | GOWA bot proxy                | ✅ Implemented | `lib/gowa.ts`                       | Basic Auth, X-Device-Id header                    |
-| Webhook receiver              | ✅ Implemented | `api/webhook/gowa/route.ts`         | HMAC verification, rule evaluation                |
-| UI primitives                 | ✅ Implemented | `components/ui/`                     | Button, Input, Badge, Modal, Toggle, etc.         |
+| Webhook receiver              | ✅ Implemented | `api/webhook/gowa/route.ts`         | HMAC, `device_automations` per `device_key`, mentions/duration/forwarded |
+| UI primitives                 | ✅ Implemented | `components/ui/`                     | Button (`loading` → `disabled`), Input, Badge, Modal, Toggle, etc. |
 | Design tokens (CSS)           | ✅ Implemented | `globals.css`                       | Shadow, radius, color, font variables             |
-| Supabase RLS                  | ✅ Implemented | `supabase/migrations/001_*.sql`     | All tables have RLS policies                      |
-| Database schema               | ✅ Implemented | `supabase/migrations/001_*.sql`     | 6 tables + triggers + indexes                     |
+| Supabase RLS                  | ✅ Implemented | `supabase/migrations/001-004`       | All tables RLS + `user_owns_device`, Grants `003` |
+| Database schema               | ✅ Implemented | `supabase/migrations/004`           | `users`, `newsletters`, `user_devices`, `device_automations`, `logs` (rules di-drop) |
 
-### 9.2 Fitur yang Belum Diimplementasi (dari Spec)
+### 9.2 Fitur yang Belum Diimplementasi (dari Spec) — update 004
 
 | Fitur                          | Status           | Catatan                                                  |
 | ------------------------------ | ---------------- | -------------------------------------------------------- |
 | "Lupa password?" link          | ❌ Not in UI     | Belum ada di auth page; bisa ditambahkan via Supabase Auth |
-| Device Settings → Rules assign | ❌ Not in UI     | Tabel `device_rules` ada di DB, tapi belum ada UI manage |
 | Device role display            | ❌ Not in UI     | Kolom `role` ada di DB, tidak ditampilkan di UI          |
 | Zod validation                 | ⚠️ Installed     | `zod@4.4.3` sudah install tapi belum dipakai di code    |
-| WebSocket for status           | ❌ Not implemented | Masih pakai polling (3 detik); WebSocket direncanakan    |
-| Pairing code login             | ⚠️ Partial       | `loginDeviceWithCode()` ada di server actions, belum ada UI |
+| WebSocket for status realtime  | ⚠️ Partial       | Polling 5s per-device + visibility-aware sudah, WS proxy disiapkan (BOT_AUTH server-only jadi polling utama) |
+| Device Settings → Rules assign | ✅ Implemented   | Sekarang per-device `device_automations` di `/devices/[id]` Automasi tab (prefix/contains/exact/regex, mentions, group picker) |
+| Pairing code login             | ✅ Implemented   | Tab QR/Kode di `devices/page.tsx` + `[deviceId]/page.tsx` (`POST /login/code`) |
 
 ### 9.3 Ketidaksesuaian Spec vs Implementasi
 

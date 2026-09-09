@@ -1,6 +1,6 @@
 # WenderDotNet
 
-A web application for managing and configuring WhatsApp bots: connect multiple numbers via QR, set up listen/auto-reply rules, and monitor every activity from one dashboard.
+A web application for managing WhatsApp bots: connect multiple numbers via QR/code, configure per-device webhook + automations (prefix/contains/exact/regex, reply/mentions/duration, group picker), and monitor every activity from one dashboard. Rules moved to device detail (`/devices/[id]`, 004).
 
 Built with Next.js (App Router), TypeScript, Tailwind CSS, and Supabase. The WhatsApp bot itself runs as an external container ([go-whatsapp-web-multidevice](https://github.com/aldinokemal2104/go-whatsapp-web-multidevice)) managed with podman compose.
 

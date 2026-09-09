@@ -23,15 +23,19 @@ interface WebhookPayload {
   } | null;
 }
 
-interface RuleRow {
+interface AutomationRow {
+  id: string;
   enabled: boolean;
-  action_type: string;
+  trigger_category: "prefix" | "contains" | "exact" | "regex";
+  trigger_type: "keyword" | "regex";
+  pattern: string;
+  reply: string;
+  is_reply: boolean;
+  mentions: string | null;
+  duration: number;
+  is_forwarded: boolean;
   target_type: string | null;
   target_jid: string | null;
-  trigger_type: string | null;
-  pattern: string | null;
-  reply: string | null;
-  auto_read: boolean;
 }
 
 // POST /api/webhook/gowa — receives webhook events from the bot
@@ -130,83 +134,75 @@ async function processMessageEvent(
   const isGroup = from.endsWith("@g.us");
   const targetType = isGroup ? "group" : "private";
 
-  // Get applicable rules for this device
-  const { data: deviceRules } = await supabase
-    .from("device_rules")
-    .select("rule_id, rules(*)")
+  // Get applicable automations for this device (004: per-device, bukan global rules)
+  const { data: automations } = await supabase
+    .from("device_automations")
+    .select("*")
     .eq("device_key", deviceId)
+    .eq("user_id", userId)
     .eq("enabled", true);
 
-  if (!deviceRules || deviceRules.length === 0) return;
+  if (!automations || automations.length === 0) return;
 
-  for (const dr of deviceRules) {
-    const rule = dr.rules as RuleRow | RuleRow[] | null;
-    const singleRule = Array.isArray(rule) ? rule[0] : rule;
-    if (!singleRule || !singleRule.enabled) continue;
+  for (const auto of automations as AutomationRow[]) {
+    if (!auto.enabled) continue;
 
     // Check target type match
-    if (singleRule.target_type && singleRule.target_type !== targetType) continue;
+    if (auto.target_type && auto.target_type !== targetType) continue;
 
-    // Check target JID match
-    if (singleRule.target_jid && singleRule.target_jid !== from) continue;
+    // Check target JID match (1 row = 1 target_jid, multi grup = duplicate rows)
+    if (auto.target_jid && auto.target_jid !== from) continue;
 
-    // Auto-read if listen rule
-    if (singleRule.action_type === "listen" && singleRule.auto_read) {
+    // Trigger match: prefix/contains/exact/regex
+    let matches = false;
+    const pat = auto.pattern ?? "";
+    const lowerText = text.toLowerCase();
+    const lowerPat = pat.toLowerCase();
+    if (auto.trigger_category === "prefix") matches = lowerText.startsWith(lowerPat);
+    else if (auto.trigger_category === "contains") matches = lowerText.includes(lowerPat);
+    else if (auto.trigger_category === "exact") matches = lowerText === lowerPat;
+    else if (auto.trigger_category === "regex" || auto.trigger_type === "regex") {
       try {
-        await gowa({
-          method: "POST",
-          path: `/message/${messagePayload.id}/read`,
-          body: { phone: from },
-        });
-        await supabase.from("logs").insert({
-          user_id: userId,
-          device_key: deviceId,
-          event_type: "auto_read",
-          chat_jid: from,
-          body: `Auto-read di ${isGroup ? "grup" : "chat"} ${senderName || from}`,
-        });
-      } catch {
-        // silent
-      }
+        const regex = new RegExp(pat, "i");
+        matches = regex.test(text);
+      } catch {}
+    } else {
+      // fallback keyword
+      matches = lowerText.includes(lowerPat);
     }
+    if (!matches) continue;
 
-    // Auto-reply if auto_reply rule
-    if (singleRule.action_type === "auto_reply" && singleRule.pattern && singleRule.reply) {
-      let matches = false;
-
-      if (singleRule.trigger_type === "keyword") {
-        matches = text.toLowerCase().includes((singleRule.pattern ?? "").toLowerCase());
-      } else if (singleRule.trigger_type === "regex") {
-        try {
-          const regex = new RegExp(singleRule.pattern ?? "", "i");
-          matches = regex.test(text);
-        } catch {
-          // invalid regex
-        }
-      }
-
-      if (matches) {
-        try {
-          await gowa({
-            method: "POST",
-            path: "/send/message",
-            body: {
-              phone: from,
-              message: singleRule.reply,
-            },
-          });
-          await supabase.from("logs").insert({
-            user_id: userId,
-            device_key: deviceId,
-            event_type: "auto_reply_sent",
-            chat_jid: from,
-            chat_name: senderName,
-            body: singleRule.reply,
-          });
-        } catch {
-          // silent
-        }
-      }
+    try {
+      const mentions = auto.mentions
+        ? auto.mentions
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : undefined;
+      await gowa({
+        method: "POST",
+        path: "/send/message",
+        device_id: deviceId,
+        body: {
+          phone: from,
+          message: auto.reply,
+          reply_message_id: auto.is_reply ? messagePayload.id : undefined,
+          is_forwarded: auto.is_forwarded || undefined,
+          duration: auto.duration || undefined,
+          mentions,
+        },
+      });
+      await supabase.from("logs").insert({
+        user_id: userId,
+        device_key: deviceId,
+        event_type: "auto_reply_sent",
+        chat_jid: from,
+        chat_name: senderName,
+        body: auto.reply,
+        metadata: { automation_id: auto.id, trigger_category: auto.trigger_category } as unknown as Record<string, unknown>,
+      });
+    } catch {
+      // silent — one failing automasi tidak block lainnya
     }
   }
 }

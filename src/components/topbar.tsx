@@ -11,7 +11,6 @@ import { WMark } from "@/components/logo";
 
 const navLinks = [
   { href: "/devices", label: "Devices" },
-  { href: "/rules", label: "Rules" },
   { href: "/logs", label: "Logs" },
 ];
 
@@ -19,14 +18,22 @@ export function Topbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const close = () => setOpen(false);
 
   async function handleLogout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
     close();
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/auth");
-    router.refresh();
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      router.push("/auth");
+      router.refresh();
+    } finally {
+      // keep true while redirecting to block double click; reset after short delay if still mounted
+      setTimeout(() => setLoggingOut(false), 2000);
+    }
   }
 
   return (
@@ -67,11 +74,17 @@ export function Topbar() {
           <button
             type="button"
             onClick={handleLogout}
+            disabled={loggingOut}
             aria-label="Keluar dari akun"
+            aria-busy={loggingOut}
             title="Keluar"
-            className="hidden h-9 w-9 place-items-center rounded-[var(--radius-sm)] text-text-muted transition-colors hover:bg-error/10 hover:text-error-strong sm:grid"
+            className="hidden h-9 w-9 place-items-center rounded-[var(--radius-sm)] text-text-muted transition-colors hover:bg-error/10 hover:text-error-strong disabled:pointer-events-none disabled:opacity-50 sm:grid"
           >
-            <LogOut className="h-4 w-4" />
+            {loggingOut ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
+            ) : (
+              <LogOut className="h-4 w-4" />
+            )}
           </button>
 
           <button
@@ -111,10 +124,16 @@ export function Topbar() {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="flex w-full items-center gap-2.5 rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-medium text-text-muted transition-colors hover:bg-error/10 hover:text-error-strong"
+                disabled={loggingOut}
+                aria-busy={loggingOut}
+                className="flex w-full items-center gap-2.5 rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-medium text-text-muted transition-colors hover:bg-error/10 hover:text-error-strong disabled:pointer-events-none disabled:opacity-50"
               >
-                <LogOut className="h-4 w-4" />
-                Keluar
+                {loggingOut ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
+                ) : (
+                  <LogOut className="h-4 w-4" />
+                )}
+                {loggingOut ? "Keluar..." : "Keluar"}
               </button>
             </div>
           </div>

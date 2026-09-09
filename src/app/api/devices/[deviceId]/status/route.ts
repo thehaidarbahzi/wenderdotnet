@@ -39,6 +39,11 @@ export async function GET(
     return NextResponse.json(
       {
         ...result,
+        // expose flat for frontend convenience (frontend was checking data.is_logged_in)
+        is_connected,
+        is_logged_in,
+        device_id: (r as { device_id?: string }).device_id ?? deviceId,
+        jid: (r as { jid?: string }).jid ?? "",
         state: is_logged_in ? "logged_in" : is_connected ? "connecting" : "disconnected",
       },
       { headers: { "Cache-Control": "no-store, max-age=0" } }

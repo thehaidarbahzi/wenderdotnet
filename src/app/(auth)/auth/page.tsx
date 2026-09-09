@@ -10,6 +10,7 @@ import { toast } from "sonner";
 export default function AuthForm() {
   const [tab, setTab] = useState<"login" | "register">("login");
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
   const supabase = createClient();
@@ -87,12 +88,25 @@ export default function AuthForm() {
   }
 
   async function handleGoogleLogin() {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/devices`,
-      },
-    });
+    if (oauthLoading || loading) return;
+    setOauthLoading(true);
+    setError("");
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=/devices`,
+        },
+      });
+      if (error) {
+        setError(error.message);
+        setOauthLoading(false);
+      }
+      // on success, browser redirects — keep loading true to block double click
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal login dengan Google");
+      setOauthLoading(false);
+    }
   }
 
   return (
@@ -151,7 +165,7 @@ export default function AuthForm() {
         <form onSubmit={handleLogin} className="space-y-4">
           <Input name="email" label="Email" type="email" required />
           <Input name="password" label="Password" type="password" required />
-          <Button type="submit" loading={loading} className="w-full">
+          <Button type="submit" loading={loading} disabled={loading || oauthLoading} className="w-full">
             Masuk
           </Button>
         </form>
@@ -172,7 +186,7 @@ export default function AuthForm() {
             type="password"
             required
           />
-          <Button type="submit" loading={loading} className="w-full">
+          <Button type="submit" loading={loading} disabled={loading || oauthLoading} className="w-full">
             Daftar
           </Button>
         </form>
@@ -190,6 +204,8 @@ export default function AuthForm() {
       <Button
         variant="secondary"
         onClick={handleGoogleLogin}
+        loading={oauthLoading}
+        disabled={oauthLoading || loading}
         className="w-full"
       >
         <svg className="h-4 w-4" viewBox="0 0 24 24">

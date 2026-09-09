@@ -88,9 +88,11 @@ export async function POST(request: Request) {
       path: "/devices",
       body: { device_id: deviceId },
     });
-  } catch {
+  } catch (e) {
+    console.error("[POST /api/devices] GOWA failed:", e);
+    const msg = e instanceof Error ? e.message : "Gagal membuat device di bot";
     return NextResponse.json(
-      { error: "Gagal membuat device di bot" },
+      { error: msg },
       { status: 500 }
     );
   }
@@ -102,10 +104,16 @@ export async function POST(request: Request) {
     .insert({ user_id: user.id, device_key: deviceId, name });
 
   if (dbError) {
+    console.error("[POST /api/devices] Supabase insert failed:", dbError);
     try {
       await gowa({ method: "DELETE", path: `/devices/${deviceId}` });
     } catch {}
-    return NextResponse.json({ error: dbError.message }, { status: 500 });
+    // Hint untuk kasus 42501 yang sering terjadi kalau migration 003_grants.sql belum dijalankan
+    const hint =
+      dbError.code === "42501"
+        ? " (permission denied — jalankan supabase/migrations/003_grants.sql di Supabase SQL Editor)"
+        : "";
+    return NextResponse.json({ error: dbError.message + hint, code: dbError.code }, { status: 500 });
   }
 
   return NextResponse.json({

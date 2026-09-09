@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Plus, Trash2, RefreshCw, QrCode, Plug, Unplug, Smartphone, Signal, WifiOff } from "lucide-react";
+import Link from "next/link";
+import { Plus, Trash2, RefreshCw, QrCode, Plug, Unplug, Smartphone, Signal, WifiOff, KeyRound, Copy, Check, Phone, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
@@ -31,6 +32,16 @@ export default function DevicesPage() {
   const [deviceName, setDeviceName] = useState("");
   const [creating, setCreating] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
+  const [hubungkanLoadingId, setHubungkanLoadingId] = useState<string | null>(null);
+
+  // QR / Code tabbing
+  const [activeTab, setActiveTab] = useState<"qr" | "code">("qr");
+  const [phone, setPhone] = useState("");
+  const [pairCode, setPairCode] = useState<string | null>(null);
+  const [pairCodeLoading, setPairCodeLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const stats = useMemo(() => {
     const total = devices.length;
@@ -60,31 +71,143 @@ export default function DevicesPage() {
     fetchDevices();
   }, [fetchDevices]);
 
-  // Poll status of connecting devices
+  // Poll status of connecting devices — backend wraps di results (openapi.yaml DeviceStatusResponse)
+  // + auto-close QR modal ketika logged_in
   useEffect(() => {
     const connecting = devices.filter((d) => d.state === "connecting");
     if (connecting.length === 0) return;
-
     const interval = setInterval(async () => {
       for (const d of connecting) {
         try {
           const res = await fetch(`/api/devices/${d.id}/status`);
           if (res.ok) {
             const data = await res.json();
-            if (data.is_logged_in) {
+            const loggedIn = data.is_logged_in || data.results?.is_logged_in || data.state === "logged_in";
+            if (loggedIn) {
               toast.success(`${d.display_name} connected!`);
               setQrModal(false);
               fetchDevices();
             }
           }
-        } catch {
-          // silent
-        }
+        } catch {}
       }
     }, 3000);
-
     return () => clearInterval(interval);
   }, [devices, fetchDevices]);
+
+  // Auto refresh per-device 5s (tanpa whole page) — visibility-aware, update semua state
+  // Ketika bot cabut, state langsung ke disconnected tanpa repeat hit per card (1 call GET /api/devices)
+  useEffect(() => {
+    if (devices.length === 0) return;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const tick = async () => {
+      if (document.visibilityState === "hidden") return;
+      try {
+        const res = await fetch("/api/devices", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          const fresh = data.devices || [];
+          // shallow compare untuk hindari rerender kalau tidak ada perubahan
+          setDevices((prev) => {
+            if (prev.length !== fresh.length) return fresh;
+            const same = prev.every((p, i) => p.id === fresh[i].id && p.state === fresh[i].state);
+            return same ? prev : fresh;
+          });
+          // auto-close modal jika selectedDevice sudah logged_in
+          if (qrModal && selectedDevice) {
+            const matched = fresh.find((d: DeviceWithStatus) => d.id === selectedDevice.id);
+            if (matched?.state === "logged_in") {
+              toast.success(`${matched.display_name} connected!`);
+              setQrModal(false);
+              setQrUrl("");
+              setPairCode(null);
+            }
+          }
+        }
+      } catch {}
+    };
+    interval = setInterval(tick, 5000);
+    const onVis = () => { if (document.visibilityState === "visible") tick(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      if (interval) clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [devices.length, fetchDevices, qrModal, selectedDevice]);
+
+  const fetchQr = useCallback(async (deviceId: string) => {
+    setQrLoading(true);
+    try {
+      const res = await fetch(`/api/devices/${deviceId}/login`);
+      if (res.ok) {
+        const data = await res.json();
+        const link = (data as { qr_link?: string; results?: { qr_link?: string } }).qr_link || (data as { results?: { qr_link?: string } }).results?.qr_link || "";
+        if (link) setQrUrl(link);
+        else toast.error((data as { error?: string }).error || "QR tidak tersedia. Coba muat ulang.");
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error((err as { error?: string }).error || "Gagal mengambil QR");
+      }
+    } catch {
+      toast.error("Gagal mengambil QR");
+    } finally {
+      setQrLoading(false);
+    }
+  }, []);
+
+  const fetchPairCode = useCallback(async (deviceId: string, phoneNumber: string) => {
+    if (!phoneNumber.trim()) {
+      toast.error("Nomor HP wajib diisi");
+      return;
+    }
+    setPairCodeLoading(true);
+    try {
+      const res = await fetch(`/api/devices/${deviceId}/login/code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phoneNumber.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const code = (data as { pair_code?: string; results?: { pair_code?: string } }).pair_code || (data as { results?: { pair_code?: string } }).results?.pair_code || "";
+        if (code) {
+          setPairCode(code);
+          toast.success("Kode pairing didapatkan");
+        } else toast.error(data.error || "Kode tidak tersedia");
+      } else {
+        toast.error(data.error || "Gagal mendapatkan kode");
+      }
+    } catch {
+      toast.error("Gagal mendapatkan kode");
+    } finally {
+      setPairCodeLoading(false);
+    }
+  }, []);
+
+  const openConnectModal = useCallback(async (device: DeviceWithStatus) => {
+    if (hubungkanLoadingId) return;
+    setHubungkanLoadingId(device.id);
+    try {
+      setSelectedDevice(device);
+      setActiveTab("qr");
+      setQrUrl("");
+      setPairCode(null);
+      setPhone("");
+      setQrModal(true);
+      await fetchQr(device.id);
+    } finally {
+      setHubungkanLoadingId(null);
+    }
+  }, [fetchQr, hubungkanLoadingId]);
+
+  const handleCloseQrModal = useCallback(() => {
+    setQrModal(false);
+    setQrUrl("");
+    setPairCode(null);
+    setPhone("");
+    setActiveTab("qr");
+    fetchDevices();
+  }, [fetchDevices]);
 
   async function handleAddDevice() {
     if (!deviceName.trim()) return;
@@ -97,24 +220,24 @@ export default function DevicesPage() {
         body: JSON.stringify({ name: deviceName.trim() }),
       });
 
-      if (!res.ok) throw new Error("Gagal membuat device");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Gagal membuat device");
+      }
 
       const data = await res.json();
       setAddModal(false);
       setDeviceName("");
 
       // Open QR modal
-      setSelectedDevice({ ...data.device, state: "connecting", is_connected: false, is_logged_in: false });
+      const newDevice = { ...data.device, state: "connecting", is_connected: false, is_logged_in: false } as DeviceWithStatus;
+      setSelectedDevice(newDevice);
+      setActiveTab("qr");
+      setPairCode(null);
+      setPhone("");
+      setQrUrl("");
       setQrModal(true);
-      setQrLoading(true);
-
-      // Get QR
-      const qrRes = await fetch(`/api/devices/${data.device.id}/login`);
-      if (qrRes.ok) {
-        const qrData = await qrRes.json();
-        setQrUrl(qrData.qr_link);
-      }
-      setQrLoading(false);
+      await fetchQr(data.device.id);
       fetchDevices();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal menambah device");
@@ -124,15 +247,22 @@ export default function DevicesPage() {
   }
 
   async function handleDeleteDevice(deviceId: string) {
+    if (deleting) return;
+    setDeleting(true);
     try {
       const res = await fetch(`/api/devices/${deviceId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Gagal menghapus device");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Gagal menghapus device");
+      }
       toast.success("Device dihapus");
       fetchDevices();
+      setDeleteConfirm(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal menghapus device");
+    } finally {
+      setDeleting(false);
     }
-    setDeleteConfirm(null);
   }
 
   function getStateBadge(state: string) {
@@ -166,8 +296,8 @@ export default function DevicesPage() {
         }
       />
 
-      {/* Stats — same card language as landing “Cara kerja” */}
-      {!loading && devices.length > 0 && (
+      {/* Stats — keep visible even while loading (jangan sembunyikan pas refresh) */}
+      {devices.length > 0 && (
         <StatGrid>
           <StatCard
             label="Total Devices"
@@ -193,37 +323,13 @@ export default function DevicesPage() {
         </StatGrid>
       )}
 
-      {/* Content */}
-      {loading ? (
-        <div className="grid gap-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-              <div className="flex gap-3.5">
-                <Skeleton className="hidden h-11 w-11 shrink-0 rounded-lg sm:block" />
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-5 w-32" />
-                    <Skeleton className="h-5 w-20 rounded-full" />
-                  </div>
-                  <Skeleton className="h-3 w-48" />
-                  <Skeleton className="h-3 w-64" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : devices.length === 0 ? (
+      {/* Content — jangan liatin skeleton pas initial/refresh, biarin list tetap keliatan */}
+      {devices.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-surface/60 p-1">
           <EmptyState
             title="Belum ada device"
             description="Tambahkan device WhatsApp pertama Anda. Sama seperti WhatsApp Web — beri nama, scan QR, dan device langsung terhubung. Tidak perlu setting server."
             icon={<QrCode className="h-5 w-5" />}
-            action={
-              <Button onClick={() => setAddModal(true)}>
-                <Plus className="h-4 w-4" />
-                Tambah Device
-              </Button>
-            }
             className="border-0 bg-transparent"
           />
           <div className="mx-auto mb-6 flex max-w-xl items-center justify-center gap-2 px-6 text-center text-xs text-text-muted">
@@ -244,12 +350,15 @@ export default function DevicesPage() {
             <button
               type="button"
               onClick={() => {
+                if (loading) return;
                 setLoading(true);
                 fetchDevices();
               }}
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-text-muted transition-colors hover:bg-surface hover:text-text-primary"
+              disabled={loading}
+              aria-busy={loading}
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-text-muted transition-colors hover:bg-surface hover:text-text-primary disabled:pointer-events-none disabled:opacity-50"
             >
-              <RefreshCw className="h-3.5 w-3.5" />
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
               Refresh
             </button>
           </div>
@@ -266,11 +375,16 @@ export default function DevicesPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="truncate text-[15px] font-semibold text-text-primary">{device.display_name}</h3>
+                      <Link href={`/devices/${device.id}`} className="truncate text-[15px] font-semibold text-text-primary hover:text-primary hover:underline">
+                        {device.display_name}
+                      </Link>
                       {getStateBadge(device.state)}
                     </div>
                     <p className="mt-1 truncate font-mono text-xs text-text-muted">{device.id}</p>
                     <p className="mt-1.5 text-xs leading-relaxed text-text-secondary">{getStateHint(device.state)}</p>
+                    <Link href={`/devices/${device.id}`} className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                      Detail <ExternalLink className="h-3 w-3" />
+                    </Link>
                   </div>
                 </div>
 
@@ -280,19 +394,9 @@ export default function DevicesPage() {
                       variant="secondary"
                       size="sm"
                       aria-label={`Hubungkan ${device.display_name}`}
-                      onClick={async () => {
-                        setSelectedDevice(device);
-                        setQrModal(true);
-                        setQrLoading(true);
-                        try {
-                          const res = await fetch(`/api/devices/${device.id}/login`);
-                          if (res.ok) {
-                            const data = await res.json();
-                            setQrUrl(data.qr_link);
-                          }
-                        } catch {}
-                        setQrLoading(false);
-                      }}
+                      onClick={() => openConnectModal(device)}
+                      loading={hubungkanLoadingId === device.id}
+                      disabled={hubungkanLoadingId !== null}
                       className="flex-1 sm:flex-none"
                     >
                       <Plug className="h-3.5 w-3.5" />
@@ -303,12 +407,24 @@ export default function DevicesPage() {
                       variant="secondary"
                       size="sm"
                       aria-label={`Putuskan ${device.display_name}`}
+                      loading={disconnectingId === device.id}
+                      disabled={disconnectingId !== null}
                       onClick={async () => {
+                        if (disconnectingId) return;
+                        setDisconnectingId(device.id);
                         try {
-                          await fetch(`/api/devices/${device.id}/logout`, { method: "POST" });
+                          const res = await fetch(`/api/devices/${device.id}/logout`, { method: "POST" });
+                          if (!res.ok) {
+                            const err = await res.json().catch(() => ({}));
+                            throw new Error(err.error || "Gagal disconnect");
+                          }
                           toast.success("Device disconnected");
                           fetchDevices();
-                        } catch {}
+                        } catch (err) {
+                          toast.error(err instanceof Error ? err.message : "Gagal disconnect");
+                        } finally {
+                          setDisconnectingId(null);
+                        }
                       }}
                       className="flex-1 sm:flex-none"
                     >
@@ -356,71 +472,178 @@ export default function DevicesPage() {
         </div>
       </Modal>
 
-      {/* QR Connect Modal */}
-      <Modal open={qrModal} onClose={() => setQrModal(false)} title="Hubungkan WhatsApp">
+      {/* QR Connect Modal — tabbing QR / Kode */}
+      <Modal open={qrModal} onClose={handleCloseQrModal} title="Hubungkan WhatsApp">
         <div className="space-y-4">
-          <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm leading-relaxed text-text-secondary">
-            Buka <span className="font-medium text-text-primary">WhatsApp → Perangkat Tertaut → Tautkan perangkat</span>, lalu scan QR di bawah. QR berlaku ~20 detik.
+          {/* Tabs */}
+          <div
+            role="tablist"
+            aria-label="Metode koneksi"
+            className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-surface-subtle p-1"
+          >
+            <button
+              role="tab"
+              aria-selected={activeTab === "qr"}
+              aria-controls="panel-qr"
+              id="tab-qr"
+              onClick={() => setActiveTab("qr")}
+              className={`inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                activeTab === "qr"
+                  ? "bg-surface text-text-primary shadow-sm border border-border"
+                  : "text-text-muted hover:text-text-primary"
+              }`}
+            >
+              <QrCode className="h-4 w-4" />
+              QR Code
+            </button>
+            <button
+              role="tab"
+              aria-selected={activeTab === "code"}
+              aria-controls="panel-code"
+              id="tab-code"
+              onClick={() => setActiveTab("code")}
+              className={`inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                activeTab === "code"
+                  ? "bg-surface text-text-primary shadow-sm border border-border"
+                  : "text-text-muted hover:text-text-primary"
+              }`}
+            >
+              <KeyRound className="h-4 w-4" />
+              Kode Pairing
+            </button>
           </div>
-          <div className="flex justify-center">
-            {qrLoading ? (
-              <Skeleton className="h-64 w-64 rounded-xl" />
-            ) : qrUrl ? (
-              // QR is a short-lived authenticated proxy URL; next/image adds no value here
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={qrUrl}
-                alt="QR Code WhatsApp"
-                className="h-64 w-64 rounded-xl border border-border bg-white p-2 shadow-sm"
-              />
-            ) : (
-              <div className="flex h-64 w-64 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-subtle p-6 text-center text-sm text-text-muted">
-                <QrCode className="h-8 w-8 opacity-50" />
-                QR tidak tersedia. Coba muat ulang.
+
+          {activeTab === "qr" ? (
+            <div id="panel-qr" role="tabpanel" aria-labelledby="tab-qr" className="space-y-4">
+              <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm leading-relaxed text-text-secondary">
+                Buka <span className="font-medium text-text-primary">WhatsApp → Perangkat Tertaut → Tautkan perangkat</span>, lalu scan QR di bawah. QR berlaku ~30 detik.
               </div>
-            )}
-          </div>
-          <div className="flex items-center justify-center gap-2 text-xs text-text-muted">
-            <span
-              className={`h-2 w-2 rounded-full ${selectedDevice?.state === "connecting" ? "animate-pulse bg-warning" : "bg-border"}`}
-              aria-hidden
-            />
-            {selectedDevice?.state === "connecting" ? "Menunggu scan..." : "Menyiapkan QR..."}
-          </div>
-          <div className="flex justify-end gap-2 border-t border-border pt-4">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setQrModal(false);
-                fetchDevices();
-              }}
-            >
-              Tutup
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={async () => {
-                if (!selectedDevice) return;
-                setQrLoading(true);
-                try {
-                  const res = await fetch(`/api/devices/${selectedDevice.id}/login`);
-                  if (res.ok) {
-                    const data = await res.json();
-                    setQrUrl(data.qr_link);
-                  }
-                } catch {}
-                setQrLoading(false);
-              }}
-            >
-              <RefreshCw className="h-4 w-4" />
-              Muat Ulang
-            </Button>
-          </div>
+              <div className="flex justify-center">
+                {qrLoading ? (
+                  <Skeleton className="h-64 w-64 rounded-xl" />
+                ) : qrUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={qrUrl}
+                    alt="QR Code WhatsApp"
+                    className="h-64 w-64 rounded-xl border border-border bg-white p-2 shadow-sm"
+                  />
+                ) : (
+                  <div className="flex h-64 w-64 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-subtle p-6 text-center text-sm text-text-muted">
+                    <QrCode className="h-8 w-8 opacity-50" />
+                    QR tidak tersedia. Coba muat ulang.
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center justify-center gap-2 text-xs text-text-muted">
+                <span
+                  className={`h-2 w-2 rounded-full ${selectedDevice?.state === "connecting" ? "animate-pulse bg-warning" : "bg-border"}`}
+                  aria-hidden
+                />
+                {selectedDevice?.state === "connecting" ? "Menunggu scan..." : "Menyiapkan QR..."}
+              </div>
+              <div className="flex justify-end gap-2 border-t border-border pt-4">
+                <Button variant="secondary" onClick={handleCloseQrModal}>
+                  Tutup
+                </Button>
+                <Button
+                  variant="secondary"
+                  loading={qrLoading}
+                  onClick={() => selectedDevice && fetchQr(selectedDevice.id)}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Muat Ulang
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div id="panel-code" role="tabpanel" aria-labelledby="tab-code" className="space-y-4">
+              <div className="rounded-lg border border-border bg-surface-subtle px-3 py-2.5 text-sm leading-relaxed text-text-secondary">
+                Masukkan nomor HP WhatsApp kamu (contoh <span className="font-mono font-medium text-text-primary">628123456789</span>). Dapatkan kode 8 karakter, lalu di HP buka <span className="font-medium text-text-primary">WhatsApp → Perangkat Tertaut → Tautkan dengan nomor telepon</span> dan masukkan kode tersebut.
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Input
+                      label="Nomor HP"
+                      placeholder="62812xxxxxxx"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value.replace(/[^0-9+ ]/g, ""))}
+                      autoComplete="tel"
+                      inputMode="numeric"
+                    />
+                    <p className="mt-1 text-xs text-text-muted">Format internasional tanpa + , contoh 628123456789</p>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => selectedDevice && fetchPairCode(selectedDevice.id, phone)}
+                  disabled={!phone.trim() || !selectedDevice}
+                  loading={pairCodeLoading}
+                  className="w-full"
+                >
+                  <Phone className="h-4 w-4" />
+                  Dapatkan Kode
+                </Button>
+
+                {pairCode ? (
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-center">
+                    <p className="text-xs font-medium uppercase tracking-widest text-text-muted">Kode Pairing</p>
+                    <div className="mt-2 flex items-center justify-center gap-2">
+                      <span className="font-mono text-3xl font-bold tracking-[0.2em] text-text-primary select-all">{pairCode}</span>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await navigator.clipboard.writeText(pairCode);
+                          setCopied(true);
+                          toast.success("Kode disalin");
+                          setTimeout(() => setCopied(false), 2000);
+                        }}
+                        className="grid h-8 w-8 place-items-center rounded-md border border-border bg-surface text-text-muted hover:text-text-primary"
+                        aria-label="Salin kode"
+                      >
+                        {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-text-secondary">
+                      Masukkan kode ini di HP dalam 30-60 detik. Jika expired, klik Dapatkan Kode lagi.
+                    </p>
+                    <div className="mt-3 flex items-center justify-center gap-2 text-xs text-text-muted">
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-warning" aria-hidden />
+                      Menunggu konfirmasi di HP...
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-subtle p-6 text-center text-sm text-text-muted">
+                    <KeyRound className="h-8 w-8 opacity-50" />
+                    Belum ada kode. Masukkan nomor HP lalu klik Dapatkan Kode.
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 border-t border-border pt-4">
+                <Button variant="secondary" onClick={handleCloseQrModal}>
+                  Tutup
+                </Button>
+                {pairCode && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => selectedDevice && fetchPairCode(selectedDevice.id, phone)}
+                    loading={pairCodeLoading}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Kode Baru
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
 
       {/* Delete Confirmation */}
-      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Hapus Device">
+      <Modal open={!!deleteConfirm} onClose={() => !deleting && setDeleteConfirm(null)} title="Hapus Device">
         <div className="space-y-4">
           <p className="text-sm leading-relaxed text-text-secondary">
             Device akan dihapus permanen dari bot dan database. Sesi WhatsApp akan terputus dan tidak dapat dibatalkan.
@@ -429,10 +652,15 @@ export default function DevicesPage() {
             Tindakan ini tidak dapat diurungkan. Pastikan device tidak sedang melayani pelanggan aktif.
           </div>
           <div className="flex justify-end gap-2 border-t border-border pt-4">
-            <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>
+            <Button variant="secondary" onClick={() => setDeleteConfirm(null)} disabled={deleting}>
               Batal
             </Button>
-            <Button variant="danger" onClick={() => deleteConfirm && handleDeleteDevice(deleteConfirm)}>
+            <Button
+              variant="danger"
+              loading={deleting}
+              disabled={deleting}
+              onClick={() => deleteConfirm && handleDeleteDevice(deleteConfirm)}
+            >
               Hapus permanen
             </Button>
           </div>

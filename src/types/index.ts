@@ -29,6 +29,27 @@ export interface DeviceStatus {
   jid: string;
 }
 
+export interface DeviceAutomation {
+  id: string;
+  user_id: string;
+  device_key: string;
+  name: string;
+  trigger_category: "prefix" | "contains" | "exact" | "regex";
+  trigger_type: "keyword" | "regex";
+  pattern: string;
+  reply: string;
+  is_reply: boolean;
+  mentions: string | null;
+  duration: number;
+  is_forwarded: boolean;
+  target_type: "group" | "private" | null;
+  target_jid: string | null;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// legacy, kept for docs compat (migrated to device_automations)
 export interface Rule {
   id: string;
   user_id: string;

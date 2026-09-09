@@ -44,25 +44,24 @@ Key decisions (from the approved product spec in `.agents/coldstart.md`):
 | --- | --- | --- |
 | `(marketing)` | `/` | Landing page (navbar/footer live in this layout) |
 | `(auth)` | `/auth` | Login/register tabs, split layout, no navbar |
-| `(app)` | `/devices` | Device list, add device, QR connect modal |
-| `(app)` | `/rules` | Global per-user rules (listen / auto_reply), assigned to devices |
+| `(app)` | `/devices` | Device list, add device, QR/code connect modal, 5s auto-refresh per-device + visibility-aware + auto-close on `logged_in` |
+| `(app)` | `/devices/[deviceId]` | Device detail — Overview (status/JID), Webhook (per-device `webhook_*` + Test dummy real), Automasi (per-device, kategori prefix/contains/exact/regex, opsi reply/mentions/duration, group picker virtualized) |
 | `(app)` | `/logs` | Activity timeline with device/event filters |
-| API | `/api/devices/*` | Server-side proxy to the bot API (Basic Auth stays server-only) |
-| API | `/api/rules/*`, `/api/logs` | CRUD over Supabase |
-| API | `/api/webhook/gowa` | Inbound webhook receiver from the bot (HMAC-verified). Device lookup uses webhook `session_id`; chat scope uses `payload.chat_id`, text uses `payload.body`; see `docs/setup.md` §9 |
+| API | `/api/devices/*` | Server-side proxy to the bot API (Basic Auth stays server-only) — `/devices`, `/devices/[id]/status`, `/devices/[id]/login`, `/devices/[id]/login/code` (pairing), `/devices/[id]/webhook` + `/test`, `/devices/[id]/groups` (X-Device-Id, cached 30s), `/devices/[id]/automations` |
+| API | `/api/logs` | CRUD over Supabase |
+| API | `/api/webhook/gowa` | Inbound webhook receiver from the bot (HMAC-verified). Device lookup uses webhook `session_id`; chat scope uses `payload.chat_id`, text uses `payload.body`; evaluates `device_automations` per `device_key`; see `docs/setup.md` §9 |
 
 ## Data model (Supabase)
 
-All tables use `uuid` PKs and `timestamptz` timestamps; all child FKs cascade on delete.
+All tables use `uuid` PKs and `timestamptz` timestamps; all child FKs cascade on delete. Migration `004` removed global `rules`/`device_rules` in favor of per-device automations.
 
 - `users`: profile, 1:1 with `auth.users` (`full_name`, `plan`)
 - `newsletters`: public landing-page signups (`email` unique)
-- `user_devices`: junction `user_id` ↔ `device_key` (+ friendly `name`)
-- `rules`: one table for both action types: `listen` (with optional `auto_read`) and `auto_reply` (`trigger_type`: keyword/regex, `pattern`, `reply`); scoping via nullable `target_type` / `target_jid`
-- `device_rules`: junction `device_key` ↔ `rule_id`
+- `user_devices`: junction `user_id` ↔ `device_key` (+ friendly `name`, per-device `webhook_url/secret/events/skip_verify`, `updated_at`)
+- `device_automations`: **per-device** automations (`device_key`, `user_id`, `name`, `trigger_category` prefix/contains/exact/regex → `trigger_type` keyword/regex, `pattern`, `reply`, `is_reply`, `mentions` (@everyone/phones), `duration` 0/86400/604800/7776000, `is_forwarded`, `target_type` group/private/null, `target_jid` 1 group per row — duplicate per grup untuk multi, `enabled`). Index `device_key, enabled` + unique `(device_key, name, target_jid, pattern)`. RLS: `user_id=auth.uid() AND user_owns_device(device_key)`
 - `logs`: append-only activity feed with typed `event_type`
 
-Row Level Security scopes every table to `auth.uid()`, except `newsletters` which allows anonymous inserts. The webhook receiver writes logs with the service-role key (server-side only).
+Row Level Security scopes every table to `auth.uid()` + `user_owns_device`, except `newsletters` which allows anonymous inserts. The webhook receiver writes logs with the service-role key (server-side only). Grants fixed in `003_grants.sql`, new table granted in `004`.
 
 ## Where the design truth lives
 

@@ -65,12 +65,14 @@ pnpm install
 
 ## 4. Load the database schema
 
-Run the initial migration exactly as-is. Two options:
+Run migrations in order. Two options:
 
 **Option A: SQL editor (simplest)**
 1. In the dashboard, open **SQL Editor → New query**.
-2. Paste the full contents of `supabase/migrations/001_initial_schema.sql`.
-3. Run it. It creates `users`, `newsletters`, `user_devices`, `rules`, `device_rules`, `logs`, all indexes and RLS policies, plus the `handle_new_user` trigger that inserts a `users` profile row on signup. The trigger function is registered as `security definer` inside the migration.
+2. Paste and Run `supabase/migrations/001_initial_schema.sql` → creates `users`, `newsletters`, `user_devices`, `rules`, `device_rules`, `logs`, indexes, RLS, `handle_new_user` trigger.
+3. Paste and Run `supabase/migrations/002_device_isolation.sql` → per-device webhook columns + `user_owns_device()` + tighter `device_rules` RLS.
+4. Paste and Run `supabase/migrations/003_grants.sql` → fixes `42501 permission denied` (GRANTS for `authenticated`/`service_role`/`anon`).
+5. Paste and Run `supabase/migrations/004_per_device_automations.sql` → **hapus total** `rules`/`device_rules`, buat `device_automations` per-device (prefix/contains/exact/regex, `is_reply`/`mentions`/`duration`/`is_forwarded`, `target_jid` 1 grup per row — duplicate per grup), RLS `user_owns_device`, indexes.
 
 **Option B: Supabase CLI (repeatable)**
 
@@ -212,10 +214,12 @@ pnpm start --port 3001
 1. Open `http://localhost:3001`; the landing page renders.
 2. `/auth` → register → confirm email if required → you land on `/devices`.
 3. Test Google SSO once: the OAuth dance should land you back on `/devices`.
-4. Click **Tambah Device**, name it, save, then scan the QR (WhatsApp → Linked Devices) in the opened modal.
-5. The device status should flip to **Connected** (the `user_devices` row is created only after the bot reports logged in).
-6. Under `/rules` create a rule with keyword `ready` + a reply, and assign your device.
-7. Message the number from *another* phone; watch the activity under `/logs`.
+4. Click **Tambah Device**, name it, save — modal opens with tabs **QR Code** (default) / **Kode Pairing**. Scan QR (WhatsApp → Perangkat Tertaut → Tautkan) atau pakai **Kode Pairing**: input `62812…` → **Dapatkan Kode** → masukkan `XXXX-XXXX` di HP. Popup auto-tutup ketika `GET /api/devices/:id/status` atau polling 5s `GET /api/devices` detect `logged_in` (visibility-aware, 5s per-device, bukan whole page).
+5. Device row auto-refresh 5s (tanpa reload page) — ketika bot cabut, state flip ke `Disconnected` dalam 5s (fallback jika WS tidak tersedia).
+6. Klik device `Detail` → `/devices/[deviceId]` tabs **Overview | Webhook | Automasi**:
+   - **Webhook**: isi `webhook_url` (+ `secret`, `events`, `skip_verify`) → **Simpan** (`PATCH /api/devices/:id/webhook` → `PATCH /devices/{id}/webhook` di GOWA) → **Test Kirim Dummy** (`POST /api/devices/:id/webhook/test` hit real `webhook_url`, tampilkan status/body) — semua button `loading+disabled` anti double-click.
+   - **Automasi**: **Tambah** → pilih `Kategori` (Kata depan/contains/exact/regex → `trigger_category`/`trigger_type`), `Pola`, `Balasan`, opsi `Reply`/`Mentions` (`@everyone`/`628xxx` per `openapi.yaml:1244`)/`Durasi hilang`/`Forwarded`, `Tipe Target` (Semua/Group/Private). Jika `Group` → **Pilih Grup**: fetch `GET /api/devices/:id/groups` (`GET /user/my/groups` via `X-Device-Id`, cached 30s, limit 500 `openapi.yaml:1074`), virtualized list 100, search debounce, multi-select → **duplicate per grup** (1 automasi per `target_jid`).
+7. Message the number from *another* phone; watch the activity under `/logs` (webhook `session_id` → `device_automations` per `device_key`).
 
 Webhook payload contract (as the receiver now expects, matching GOWA v9):
 

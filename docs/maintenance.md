@@ -4,7 +4,7 @@
 
 These come from the approved spec (`.agents/coldstart.md` §2.9). Breaking them breaks the architecture:
 
-1. **Server actions live only in `src/server/actions/`** (`auth.ts`, `devices.ts`, `rules.ts`, `logs.ts`, `newsletter.ts`). Frontend files must never contain `"use server"`; they import and call the methods.
+1. **Server actions live only in `src/server/actions/`** (`auth.ts`, `devices.ts`, `logs.ts`, `newsletter.ts` — `rules.ts` removed in 004, replaced by per-device `device_automations` via `src/app/api/devices/[deviceId]/automations/*`). Frontend files must never contain `"use server"`; they import and call the methods.
 2. **All bot API access goes through `src/lib/gowa.ts`** (fetch + Basic Auth). Never call `BOT_API_URL` directly from a route handler, action, or (worse) client code.
 3. **Supabase service-role client is server-only** (`src/lib/supabase/server.ts`). The browser uses the anon client (`src/lib/supabase/client.ts`). Never import the server module from a client component.
 4. **A device row is inserted only after the bot reports logged in.** Never create `user_devices` entries for disconnected/abandoned slots; guard inserts with a `(user_id, device_key)` upsert check.
@@ -33,12 +33,12 @@ These come from the approved spec (`.agents/coldstart.md` §2.9). Breaking them 
 
 ### Modifying the rule engine / webhook
 
-The receiver is `src/app/api/webhook/gowa/route.ts`. Flow: verify HMAC signature → resolve user by device (`session_id`, falling back to `device_id`) → load enabled rules for that device → for `listen` rules optionally auto-read; for `auto_reply` rules match keyword/regex and send via `POST /send/message` → append to `logs`.
+The receiver is `src/app/api/webhook/gowa/route.ts`. Flow: verify HMAC signature → resolve user by device (`session_id`, falling back to `device_id`) → load enabled **device_automations** for that `device_key` (per-device, not global `rules`) → match `trigger_category`/`trigger_type`+`pattern` (prefix/contains/exact/regex) → send via `POST /send/message` with `is_reply`/`mentions`/`duration`/`is_forwarded` per openapi `openapi.yaml:1210` → append to `logs`. Duplicate per grup: 1 automasi = 1 `target_jid`.
 
 When touching it:
 
 - Keep HMAC verification first; reject unsigned payloads early.
-- Wrap rule evaluation so one failing rule cannot block logging of the event.
+- Wrap automasi evaluation so one failing automasi cannot block logging of the event.
 - Respect the event-type contract in the `logs.event_type` CHECK constraint.
 - Keep it aligned with the **current** GOWA webhook payload (v8+): device key = `session_id`, chat scope = `payload.chat_id`, sender = `payload.from`, text = `payload.body` (ack receipts carry `payload.ids` + `payload.receipt_type`). Re-check against `openapi.yaml`/upstream `docs/webhook-payload.md` before changing field names.
 
@@ -80,8 +80,8 @@ Also manually verify:
 | --- | --- |
 | `src/app/(marketing)/` | Landing page + marketing layout (navbar/footer) |
 | `src/app/(auth)/` | Login/register split layout |
-| `src/app/(app)/` | Devices, rules, logs dashboard pages |
-| `src/app/api/` | Route handlers (bot proxy, rules/logs CRUD, webhook) |
+| `src/app/(app)/` | Devices (+ `[deviceId]` detail with webhook/automasi/groups), logs dashboard pages |
+| `src/app/api/` | Route handlers (bot proxy, device automations/groups/webhook, logs CRUD, webhook) |
 | `src/components/marketing/` | Landing-only sections (hero preview, visuals, newsletter form) |
 | `src/components/ui/` | Primitives: button, input, badge, modal, toggle, skeleton, empty state |
 | `src/server/actions/` | All `"use server"` functions |
