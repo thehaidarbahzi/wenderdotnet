@@ -2,11 +2,6 @@ import { QrCode, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { WMark } from "@/components/logo";
 
-/*
- * Static preview of the actual Devices screen (real states, real labels).
- * Purpose: show the product instead of describing it. Single shadow-lg +
- * one soft radial glow behind it mark this as the page's focal point.
- */
 export function HeroPreview() {
   return (
     <div className="relative mx-auto mt-14 max-w-3xl overflow-visible sm:mt-16">
@@ -15,7 +10,7 @@ export function HeroPreview() {
         className="absolute -inset-x-8 -top-10 bottom-0 rounded-[var(--radius-xl)] bg-primary/15 blur-3xl dark:bg-primary/20"
       />
       <div className="relative overflow-hidden rounded-[var(--radius-xl)] border border-border bg-surface shadow-lg">
-        {/* App topbar */}
+        {}
         <div className="flex items-center gap-2 border-b border-border px-4 py-3 sm:px-5">
           <WMark className="h-[18px] w-[18px] text-primary" />
           <span className="text-sm font-semibold text-text-primary">wenderdotnet</span>
@@ -23,7 +18,7 @@ export function HeroPreview() {
         </div>
 
         <div className="space-y-3 p-4 sm:p-5">
-          {/* Device rows mirror the real status model: logged_in / connecting / disconnected */}
+          {}
           <div className="flex items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-border bg-surface-subtle/60 p-3.5">
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-text-primary">Toko Online</p>
@@ -46,7 +41,7 @@ export function HeroPreview() {
           </div>
 
           <div className="grid gap-3 pt-1 sm:grid-cols-2">
-            {/* Active rules summary */}
+            {}
             <div className="rounded-[var(--radius-lg)] border border-border bg-surface-subtle/60 p-3.5">
               <p className="text-xs font-medium text-text-secondary">Rules aktif</p>
               <ul className="mt-2 space-y-1.5 text-xs text-text-muted">
@@ -60,7 +55,7 @@ export function HeroPreview() {
                 </li>
               </ul>
             </div>
-            {/* Latest activity */}
+            {}
             <div className="rounded-[var(--radius-lg)] border border-border bg-surface-subtle/60 p-3.5">
               <p className="text-xs font-medium text-text-secondary">Aktivitas terbaru</p>
               <ul className="mt-2 space-y-1.5 text-xs text-text-muted">
@@ -72,7 +67,7 @@ export function HeroPreview() {
         </div>
       </div>
 
-      {/* Floating QR chip: hints at the connect flow without leaving the mockup */}
+      {}
       <div className="absolute -bottom-5 -left-3 hidden items-center gap-3 rounded-[var(--radius-lg)] border border-border bg-surface p-3 shadow-md sm:flex lg:-left-12">
         <span className="grid h-11 w-11 place-items-center rounded-[var(--radius-md)] border border-dashed border-border bg-surface-subtle text-text-secondary">
           <QrCode className="h-5 w-5" />

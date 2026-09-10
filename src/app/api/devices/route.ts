@@ -5,8 +5,6 @@ import type { GowaResponse, DeviceInfo } from "@/types";
 
 export const dynamic = "force-dynamic";
 
-// Prod: single GOWA call + parallel status fetch. Jangan fetch /devices per loop (N+1).
-// Cache-control: no-store karena status live, tapi frontend boleh SWR 10-15s.
 export async function GET() {
   const supabase = await createClient();
   const {
@@ -26,16 +24,14 @@ export async function GET() {
     return NextResponse.json({ devices: [] });
   }
 
-  // 1) Single fetch daftar device di GOWA (1 call, bukan N)
   let botDeviceIds = new Set<string>();
   try {
     const botDevices = await gowa<GowaResponse<DeviceInfo[]>>({ path: "/devices" });
     botDeviceIds = new Set((botDevices.results ?? []).map((d) => d.id));
   } catch {
-    // GOWA down -> semua dianggap disconnected, tetap return 200 agar UI tidak error
+
   }
 
-  // 2) Parallel fetch status per device yang ada di GOWA (max concurrency = all, GOWA ringan)
   const devices = await Promise.all(
     userDevices.map(async (ud) => {
       if (!botDeviceIds.has(ud.device_key)) {
@@ -79,8 +75,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
   }
 
-  // Create device slot in bot
-  const deviceId = `wdn_${Date.now()}`;
+  const crypto = await import("crypto");
+  const deviceId = `wdn_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
 
   try {
     await gowa({
@@ -97,8 +93,6 @@ export async function POST(request: Request) {
     );
   }
 
-  // Persist ownership in DB immediately (RLS: user_id = auth.uid())
-  // Kalau insert gagal (mis. duplicate), rollback slot di GOWA agar tidak orphan
   const { error: dbError } = await supabase
     .from("user_devices")
     .insert({ user_id: user.id, device_key: deviceId, name });
@@ -108,7 +102,7 @@ export async function POST(request: Request) {
     try {
       await gowa({ method: "DELETE", path: `/devices/${deviceId}` });
     } catch {}
-    // Hint untuk kasus 42501 yang sering terjadi kalau migration 003_grants.sql belum dijalankan
+
     const hint =
       dbError.code === "42501"
         ? " (permission denied — jalankan supabase/migrations/003_grants.sql di Supabase SQL Editor)"

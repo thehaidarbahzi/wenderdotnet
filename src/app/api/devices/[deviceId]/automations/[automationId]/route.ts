@@ -71,7 +71,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ deviceId: string; automationId: string }> }
 ) {
-  // alias for toggle enabled — reuse PUT
+
   const { deviceId: did, automationId: aid } = await params;
   return PUT(request, { params: Promise.resolve({ deviceId: did, automationId: aid }) } as unknown as { params: Promise<{ deviceId: string; automationId: string }> });
 }

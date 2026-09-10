@@ -1,15 +1,10 @@
 import { QrCode, Smartphone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-/*
- * Feature visuals depict the product's own UI (device list, auto-reply chat,
- * event log) so each section shows what the feature actually looks like.
- */
-
 export function DeviceStackVisual() {
   return (
     <div className="relative mx-auto w-full max-w-sm overflow-hidden py-6">
-      {/* QR connect panel (back layer) */}
+      {}
       <div className="absolute left-0 top-0 w-44 rotate-[-4deg] rounded-[var(--radius-lg)] border border-border bg-surface p-4 shadow-md">
         <div className="grid h-28 place-items-center rounded-[var(--radius-md)] border border-dashed border-border bg-surface-subtle">
           <QrCode className="h-12 w-12 text-text-muted" strokeWidth={1.5} />
@@ -19,7 +14,7 @@ export function DeviceStackVisual() {
         </p>
       </div>
 
-      {/* Device list (front layer) */}
+      {}
       <div className="relative ml-auto w-64 translate-y-10 rounded-[var(--radius-lg)] border border-border bg-surface p-4 shadow-lg">
         <div className="flex items-center gap-2.5">
           <span className="grid h-8 w-8 place-items-center rounded-[var(--radius-md)] bg-primary-subtle text-primary">

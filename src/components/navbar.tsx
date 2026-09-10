@@ -31,7 +31,7 @@ export function Navbar() {
           </Link>
         </div>
 
-        {/* Desktop menu — centered */}
+        {}
         <div className="hidden items-center gap-1 sm:flex">
           {NAV_LINKS.map((link) => (
             <Link key={link.href} href={link.href} className={linkClass}>
@@ -61,7 +61,7 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Mobile menu — same links as desktop */}
+      {}
       {open && (
         <div className="border-t border-border bg-surface sm:hidden">
           <div className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-4 sm:px-6 lg:px-8">

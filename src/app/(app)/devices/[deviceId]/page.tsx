@@ -31,7 +31,6 @@ export default function DeviceDetailPage() {
   const [status, setStatus] = useState<{ is_connected: boolean; is_logged_in: boolean; state: string } | null>(null);
   const [loadingDevice, setLoadingDevice] = useState(true);
 
-  // webhook
   const [webhook, setWebhook] = useState({ webhook_url: "", webhook_secret: "", webhook_events: "", webhook_insecure_skip_verify: false });
   const [webhookLoading, setWebhookLoading] = useState(false);
   const [webhookSaving, setWebhookSaving] = useState(false);
@@ -40,7 +39,6 @@ export default function DeviceDetailPage() {
   const [detailConnectLoading, setDetailConnectLoading] = useState(false);
   const [detailDisconnecting, setDetailDisconnecting] = useState(false);
 
-  // connect modal (qr/code)
   const [connectModal, setConnectModal] = useState(false);
   const [activeConnectTab, setActiveConnectTab] = useState<"qr" | "code">("qr");
   const [qrUrl, setQrUrl] = useState("");
@@ -50,7 +48,6 @@ export default function DeviceDetailPage() {
   const [pairCodeLoading, setPairCodeLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // automations
   const [automations, setAutomations] = useState<DeviceAutomation[]>([]);
   const [autoLoading, setAutoLoading] = useState(true);
   const [autoModal, setAutoModal] = useState(false);
@@ -71,7 +68,6 @@ export default function DeviceDetailPage() {
     target_jids: [] as string[],
   });
 
-  // groups
   const [groups, setGroups] = useState<GroupItem[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
   const [groupsFetched, setGroupsFetched] = useState(false);
@@ -98,7 +94,6 @@ export default function DeviceDetailPage() {
     finally { setLoadingDevice(false); }
   }, [deviceId]);
 
-  // polling 5s + visibility-aware (WS fallback ke polling, BOT_AUTH server-only jadi WS browser 401)
   useEffect(() => {
     fetchDevice();
     let interval: ReturnType<typeof setInterval> | null = null;
@@ -124,7 +119,6 @@ export default function DeviceDetailPage() {
     };
   }, [fetchDevice, tab]);
 
-  // auto-close connect modal when logged_in
   useEffect(() => {
     if (!connectModal) return;
     if (status?.is_logged_in) {
@@ -264,16 +258,16 @@ export default function DeviceDetailPage() {
         is_forwarded: autoForm.is_forwarded,
         target_type: autoForm.target_type || undefined,
         target_jids: autoForm.target_type === "group" ? autoForm.target_jids : undefined,
-        target_jid: autoForm.target_type !== "group" ? undefined : undefined, // handled via target_jids
+        target_jid: autoForm.target_type !== "group" ? undefined : undefined,
       };
-      // For edit, PUT single
+
       if (editingAuto) {
         const res = await fetch(`/api/devices/${deviceId}/automations/${editingAuto.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, target_jid: autoForm.target_jids[0] ?? null }) });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Gagal update");
         toast.success("Automasi diperbarui");
       } else {
-        // duplicate per grup: payload.target_jids array will be handled by backend (creates N rows)
+
         const res = await fetch(`/api/devices/${deviceId}/automations`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Gagal buat automasi");
@@ -463,7 +457,7 @@ export default function DeviceDetailPage() {
         </div>
       )}
 
-      {/* Add/Edit Automation Modal */}
+      {}
       <Modal open={autoModal} onClose={() => !autoSaving && setAutoModal(false)} title={editingAuto ? "Edit Automasi" : "Tambah Automasi"}>
         <div className="space-y-4 max-h-[70vh] overflow-auto pr-1">
           <Input label="Nama" placeholder="Balas harga" value={autoForm.name} onChange={(e) => setAutoForm({ ...autoForm, name: e.target.value })} />
@@ -513,7 +507,7 @@ export default function DeviceDetailPage() {
         </div>
       </Modal>
 
-      {/* Connect Modal QR/Code */}
+      {}
       <Modal open={connectModal} onClose={() => { setConnectModal(false); setQrUrl(""); setPairCode(null); }} title="Hubungkan WhatsApp">
         <div className="space-y-4">
           <div role="tablist" className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-surface-subtle p-1">

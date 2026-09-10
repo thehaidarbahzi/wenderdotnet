@@ -6,10 +6,6 @@ import { subscribeNewsletter } from "@/server/actions/newsletter";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 
-/*
- * Wired to the subscribeNewsletter server action (src/server/actions/newsletter.ts).
- * Covers loading, success, duplicate email, and failure states.
- */
 export function NewsletterForm() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");

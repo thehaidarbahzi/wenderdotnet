@@ -14,6 +14,5 @@ export default function NotFound() {
     });
   }, [router]);
 
-  // Minimal placeholder while redirecting — no 404 UI per spec
   return null;
 }

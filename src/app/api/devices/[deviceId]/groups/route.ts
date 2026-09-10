@@ -19,7 +19,7 @@ export async function GET(
   if (!owned) return NextResponse.json({ error: "Device tidak ditemukan atau bukan milik Anda" }, { status: 403 });
 
   try {
-    // GOWA: GET /user/my/groups requires X-Device-Id
+
     const res = await gowa<{
       code: string;
       message: string;
@@ -29,16 +29,15 @@ export async function GET(
       device_id: deviceId,
     });
 
-    // GOWA returns { results: { data: [...] } } — normalize to flat array
     const groups = res.results?.data ?? (res as unknown as { data: unknown[] }).data ?? [];
-    // Cache 30s di edge, tapi no-store untuk status live — groups jarang berubah jadi 30s ok
+
     return NextResponse.json(
       { groups },
       { headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" } }
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Gagal mengambil grup";
-    // 500 karena device mungkin belum logged_in
+
     if (msg.includes("401") || msg.includes("not logged") || msg.includes("400")) {
       return NextResponse.json({ error: "Device belum terhubung. Hubungkan dulu.", groups: [] }, { status: 400 });
     }

@@ -23,13 +23,12 @@ export async function getDevices(): Promise<DeviceWithStatus[]> {
 
   if (!userDevices || userDevices.length === 0) return [];
 
-  // Prod: single /devices call + parallel /status (hindari N+1 sequential)
   let botDeviceIds = new Set<string>();
   try {
     const botDevices = await gowa<GowaResponse<DeviceInfo[]>>({ path: "/devices" });
     botDeviceIds = new Set((botDevices.results ?? []).map((d) => d.id));
   } catch {
-    // GOWA down -> fallback disconnected
+
   }
 
   const results = await Promise.all(
@@ -82,11 +81,12 @@ export async function addDevice(name: string) {
 
   if (!user) redirect("/auth");
 
-  // Create device slot in bot
+  const crypto = await import("crypto");
+  const deviceSuffix = crypto.randomUUID().slice(0, 8);
   const result = await gowa<GowaResponse<{ id: string }>>({
     method: "POST",
     path: "/devices",
-    body: { device_id: `wdn_${Date.now()}` },
+    body: { device_id: `wdn_${Date.now()}_${deviceSuffix}` },
   });
 
   const deviceId = result.results?.id;
@@ -148,7 +148,6 @@ export async function insertUserDevice(
 
   if (!user) redirect("/auth");
 
-  // Upsert guard
   const { data: existing } = await supabase
     .from("user_devices")
     .select("id")
@@ -169,24 +168,20 @@ export async function insertUserDevice(
 }
 
 export async function deleteDevice(deviceId: string) {
+  await assertDeviceOwner(deviceId);
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   if (!user) redirect("/auth");
 
-  // Remove from bot
   try {
     await gowa({
       method: "DELETE",
       path: `/devices/${deviceId}`,
     });
-  } catch {
-    // Bot might already be gone
-  }
+  } catch {}
 
-  // Remove from DB
   const { error } = await supabase
     .from("user_devices")
     .delete()
@@ -209,75 +204,5 @@ export async function reconnectDevice(deviceId: string) {
   return gowa({
     method: "POST",
     path: `/devices/${deviceId}/reconnect`,
-  });
-}
-
-export interface DeviceWebhookConfig {
-  webhook_url: string | null;
-  webhook_secret: string | null;
-  webhook_events: string | null;
-  webhook_insecure_skip_verify: boolean;
-}
-
-export async function getDeviceWebhook(deviceId: string): Promise<DeviceWebhookConfig> {
-  await assertDeviceOwner(deviceId);
-  // Prefer DB (source of truth for UI), fallback to GOWA per-device config
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("user_devices")
-    .select("webhook_url, webhook_secret, webhook_events, webhook_insecure_skip_verify")
-    .eq("device_key", deviceId)
-    .single();
-  if (data && data.webhook_url !== undefined) {
-    try {
-      const gowaCfg = await gowa<{
-        results: DeviceWebhookConfig & { device_id: string };
-      }>({ path: `/devices/${deviceId}/webhook` });
-      // If GOWA has value but DB is empty, sync DB
-      if (gowaCfg.results?.webhook_url && !data.webhook_url) return gowaCfg.results;
-    } catch {}
-    return data as DeviceWebhookConfig;
-  }
-  const res = await gowa<{ results: DeviceWebhookConfig & { device_id: string } }>({
-    path: `/devices/${deviceId}/webhook`,
-  });
-  return res.results;
-}
-
-export async function updateDeviceWebhook(
-  deviceId: string,
-  config: { webhook_url: string; webhook_secret?: string; webhook_events?: string; webhook_insecure_skip_verify?: boolean }
-) {
-  await assertDeviceOwner(deviceId);
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth");
-
-  // 1) Persist in Supabase (RLS ensures owner only) - enables UI history even if GOWA storage wiped
-  const { error: dbError } = await supabase
-    .from("user_devices")
-    .update({
-      webhook_url: config.webhook_url || null,
-      webhook_secret: config.webhook_secret || null,
-      webhook_events: config.webhook_events || null,
-      webhook_insecure_skip_verify: config.webhook_insecure_skip_verify ?? false,
-    })
-    .eq("user_id", user.id)
-    .eq("device_key", deviceId);
-  if (dbError) throw dbError;
-
-  // 2) Sync to GOWA per-device webhook (overrides global WHATSAPP_WEBHOOK_URL for this device)
-  // openapi.yaml: PATCH /devices/{device_id}/webhook
-  return gowa({
-    method: "PATCH",
-    path: `/devices/${deviceId}/webhook`,
-    body: {
-      webhook_url: config.webhook_url,
-      webhook_secret: config.webhook_secret,
-      webhook_events: config.webhook_events,
-      webhook_insecure_skip_verify: config.webhook_insecure_skip_verify,
-    },
   });
 }

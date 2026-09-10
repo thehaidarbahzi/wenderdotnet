@@ -102,7 +102,7 @@ export default function AuthForm() {
         setError(error.message);
         setOauthLoading(false);
       }
-      // on success, browser redirects — keep loading true to block double click
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal login dengan Google");
       setOauthLoading(false);
@@ -122,7 +122,7 @@ export default function AuthForm() {
         </p>
       </div>
 
-      {/* Tab switcher */}
+      {}
       <div className="mb-6 flex rounded-[var(--radius-md)] border border-border bg-surface-subtle p-1">
         <button
           onClick={() => {

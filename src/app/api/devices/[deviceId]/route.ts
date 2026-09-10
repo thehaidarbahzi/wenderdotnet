@@ -16,14 +16,25 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Remove from bot
-  try {
-    await gowa({ method: "DELETE", path: `/devices/${deviceId}` });
-  } catch {
-    // Bot might already be gone
+  if (!/^wdn_[A-Za-z0-9_-]{5,64}$/.test(deviceId)) {
+    return NextResponse.json({ error: "Invalid device ID" }, { status: 400 });
   }
 
-  // Remove from DB
+  const { data: owned } = await supabase
+    .from("user_devices")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("device_key", deviceId)
+    .single();
+
+  if (!owned) {
+    return NextResponse.json({ error: "Device tidak ditemukan atau bukan milik Anda" }, { status: 403 });
+  }
+
+  try {
+    await gowa({ method: "DELETE", path: `/devices/${deviceId}` });
+  } catch {}
+
   const { error } = await supabase
     .from("user_devices")
     .delete()

@@ -8,7 +8,6 @@ export async function GET(
 ) {
   const { deviceId } = await params;
 
-  // Per-user isolation: only owner can check status
   const supabase = await createClient();
   const {
     data: { user },
@@ -32,14 +31,13 @@ export async function GET(
       path: `/devices/${deviceId}/status`,
     });
 
-    // Normalisasi prod: tambah derived state agar frontend tidak hitung ulang
     const r = result.results ?? (result as unknown as { is_connected: boolean; is_logged_in: boolean });
     const is_connected = (r as { is_connected: boolean }).is_connected ?? false;
     const is_logged_in = (r as { is_logged_in: boolean }).is_logged_in ?? false;
     return NextResponse.json(
       {
         ...result,
-        // expose flat for frontend convenience (frontend was checking data.is_logged_in)
+
         is_connected,
         is_logged_in,
         device_id: (r as { device_id?: string }).device_id ?? deviceId,

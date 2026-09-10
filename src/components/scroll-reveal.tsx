@@ -9,11 +9,6 @@ interface ScrollRevealProps {
   delay?: number;
 }
 
-/*
- * ScrollReveal — purpose: guide eye to content as it enters viewport.
- * Uses IntersectionObserver for performant scroll-triggered animations.
- * Respects prefers-reduced-motion via CSS override in globals.css.
- */
 export function ScrollReveal({
   children,
   className = "",

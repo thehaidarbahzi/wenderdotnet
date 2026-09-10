@@ -37,7 +37,6 @@ export default function DevicesPage() {
   const [hubungkanLoadingId, setHubungkanLoadingId] = useState<string | null>(null);
   const notifiedRef = useRef<Set<string>>(new Set());
 
-  // QR / Code tabbing
   const [activeTab, setActiveTab] = useState<"qr" | "code">("qr");
   const [phone, setPhone] = useState("");
   const [pairCode, setPairCode] = useState<string | null>(null);
@@ -60,20 +59,17 @@ export default function DevicesPage() {
         setDevices(data.devices || []);
       }
     } catch {
-      // silent
+
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    // Initial load; migrate to RSC data loading to satisfy set-state-in-effect
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     fetchDevices();
   }, [fetchDevices]);
 
-  // Poll status of connecting devices — backend wraps di results (openapi.yaml DeviceStatusResponse)
-  // + auto-close QR modal ketika logged_in — dedup biar tidak double notif dengan 5s polling
   useEffect(() => {
     const connecting = devices.filter((d) => d.state === "connecting");
     if (connecting.length === 0) return;
@@ -99,9 +95,6 @@ export default function DevicesPage() {
     return () => clearInterval(interval);
   }, [devices, fetchDevices]);
 
-  // Auto refresh per-device 5s (tanpa whole page) — visibility-aware, update semua state
-  // Ketika bot cabut, state langsung ke disconnected tanpa repeat hit per card (1 call GET /api/devices)
-  // Skeleton tidak ditampilkan lagi setelah initial (biarin list aja)
   useEffect(() => {
     if (devices.length === 0) return;
     let interval: ReturnType<typeof setInterval> | null = null;
@@ -112,17 +105,17 @@ export default function DevicesPage() {
         if (res.ok) {
           const data = await res.json();
           const fresh = data.devices || [];
-          // shallow compare untuk hindari rerender kalau tidak ada perubahan
+
           setDevices((prev) => {
             if (prev.length !== fresh.length) return fresh;
             const same = prev.every((p, i) => p.id === fresh[i].id && p.state === fresh[i].state);
             return same ? prev : fresh;
           });
-          // bersihkan notified jika device kembali disconnected (biar bisa notif lagi next connect)
+
           for (const d of fresh as DeviceWithStatus[]) {
             if (d.state !== "logged_in") notifiedRef.current.delete(d.id);
           }
-          // auto-close modal jika selectedDevice sudah logged_in — dedup
+
           if (qrModal && selectedDevice) {
             const matched = fresh.find((d: DeviceWithStatus) => d.id === selectedDevice.id);
             if (matched?.state === "logged_in" && !notifiedRef.current.has(matched.id)) {
@@ -240,7 +233,6 @@ export default function DevicesPage() {
       setAddModal(false);
       setDeviceName("");
 
-      // Open QR modal
       const newDevice = { ...data.device, state: "connecting", is_connected: false, is_logged_in: false } as DeviceWithStatus;
       setSelectedDevice(newDevice);
       setActiveTab("qr");
@@ -307,7 +299,7 @@ export default function DevicesPage() {
         }
       />
 
-      {/* Stats — keep visible even while loading (jangan sembunyikan pas refresh) */}
+      {}
       {devices.length > 0 && (
         <StatGrid>
           <StatCard
@@ -334,7 +326,7 @@ export default function DevicesPage() {
         </StatGrid>
       )}
 
-      {/* Content — jangan liatin skeleton pas initial/refresh, biarin list tetap keliatan */}
+      {}
       {devices.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-surface/60 p-1">
           <EmptyState
@@ -459,7 +451,7 @@ export default function DevicesPage() {
         </div>
       )}
 
-      {/* Add Device Modal */}
+      {}
       <Modal open={addModal} onClose={() => setAddModal(false)} title="Tambah Device">
         <div className="space-y-5">
           <p className="text-sm leading-relaxed text-text-secondary">
@@ -483,10 +475,10 @@ export default function DevicesPage() {
         </div>
       </Modal>
 
-      {/* QR Connect Modal — tabbing QR / Kode */}
+      {}
       <Modal open={qrModal} onClose={handleCloseQrModal} title="Hubungkan WhatsApp">
         <div className="space-y-4">
-          {/* Tabs */}
+          {}
           <div
             role="tablist"
             aria-label="Metode koneksi"
@@ -533,7 +525,7 @@ export default function DevicesPage() {
                 {qrLoading ? (
                   <Skeleton className="h-64 w-64 rounded-xl" />
                 ) : qrUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
+
                   <img
                     src={qrUrl}
                     alt="QR Code WhatsApp"
@@ -653,7 +645,7 @@ export default function DevicesPage() {
         </div>
       </Modal>
 
-      {/* Delete Confirmation */}
+      {}
       <Modal open={!!deleteConfirm} onClose={() => !deleting && setDeleteConfirm(null)} title="Hapus Device">
         <div className="space-y-4">
           <p className="text-sm leading-relaxed text-text-secondary">

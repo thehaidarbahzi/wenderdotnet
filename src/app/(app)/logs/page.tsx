@@ -108,7 +108,7 @@ export default function LogsPage() {
         setLogs(data.logs || []);
       }
     } catch {
-      // silent
+
     } finally {
       setLoading(false);
     }
@@ -122,19 +122,17 @@ export default function LogsPage() {
         setDevices(data.devices || []);
       }
     } catch {
-      // silent
+
     }
   }, []);
 
   useEffect(() => {
-    // Initial load; migrate to RSC data loading to satisfy set-state-in-effect
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     fetchDevices();
   }, [fetchDevices]);
 
   useEffect(() => {
-    // Initial + filter-driven reload
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     fetchLogs();
   }, [fetchLogs]);
 
@@ -165,7 +163,7 @@ export default function LogsPage() {
         }
       />
 
-      {/* Stats — only when we have data */}
+      {}
       {!loading && logs.length > 0 && (
         <StatGrid>
           <StatCard
@@ -192,7 +190,7 @@ export default function LogsPage() {
         </StatGrid>
       )}
 
-      {/* Filter Card — elevated, same language as landing filter sections */}
+      {}
       <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
         <div className="flex items-center gap-2 border-b border-border pb-3">
           <span className="grid h-7 w-7 place-items-center rounded-md bg-surface-subtle border border-border text-text-muted">

@@ -31,7 +31,7 @@ export function Topbar() {
       router.push("/auth");
       router.refresh();
     } finally {
-      // keep true while redirecting to block double click; reset after short delay if still mounted
+
       setTimeout(() => setLoggingOut(false), 2000);
     }
   }
@@ -39,7 +39,7 @@ export function Topbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-surface/85 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-6xl items-center px-4 sm:px-6 lg:px-8">
-        {/* Left — brand (flex-1) */}
+        {}
         <div className="flex flex-1 items-center">
           <Link href="/devices" onClick={close} className="flex items-center gap-2">
             <WMark className="h-5 w-5 text-[#34D399]" />
@@ -47,7 +47,7 @@ export function Topbar() {
           </Link>
         </div>
 
-        {/* Center — desktop nav, truly centered via flex-1 siblings */}
+        {}
         <nav aria-label="Utama" className="hidden items-center gap-1 sm:flex">
           {navLinks.map((link) => (
             <Link
@@ -66,11 +66,11 @@ export function Topbar() {
           ))}
         </nav>
 
-        {/* Right — actions (flex-1, justify-end) so center stays centered */}
+        {}
         <div className="flex flex-1 items-center justify-end gap-1.5 sm:gap-2">
           <ThemeToggle />
 
-          {/* Logout — icon on desktop like before, hidden on mobile (moved into dropdown) */}
+          {}
           <button
             type="button"
             onClick={handleLogout}
@@ -99,7 +99,7 @@ export function Topbar() {
         </div>
       </div>
 
-      {/* Mobile menu — replicate Navbar's dropdown pattern (not the old second-row) */}
+      {}
       {open && (
         <div className="border-t border-border bg-surface sm:hidden">
           <div className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-4 sm:px-6 lg:px-8">

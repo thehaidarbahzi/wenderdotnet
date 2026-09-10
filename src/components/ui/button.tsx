@@ -22,7 +22,7 @@ const variantStyles: Record<Variant, string> = {
 };
 
 const sizeStyles: Record<Size, string> = {
-  // Heights keep mobile tap targets at or near 44px (sm is for dense toolbars only)
+
   sm: "h-9 px-3 text-sm rounded-[var(--radius-sm)]",
   md: "h-10 px-4 text-sm rounded-[var(--radius-md)]",
   lg: "h-11 px-6 text-base rounded-[var(--radius-md)]",

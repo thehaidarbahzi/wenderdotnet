@@ -49,7 +49,6 @@ export interface DeviceAutomation {
   updated_at: string;
 }
 
-// legacy, kept for docs compat (migrated to device_automations)
 export interface Rule {
   id: string;
   user_id: string;
@@ -101,7 +100,6 @@ export interface Newsletter {
   created_at: string;
 }
 
-// Bot API response types
 export interface GowaResponse<T = unknown> {
   status: number;
   code: string;

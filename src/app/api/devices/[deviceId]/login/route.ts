@@ -24,20 +24,18 @@ export async function GET(
   if (!owned) return NextResponse.json({ error: "Device tidak ditemukan atau bukan milik Anda" }, { status: 403 });
 
   try {
-    // openapi.yaml: GET /devices/{device_id}/login -> DeviceLoginResponse { results: { qr_link, qr_duration } }
+
     const result = await gowa<GowaResponse<LoginResponse>>({
       path: `/devices/${deviceId}/login`,
     });
 
-    // Frontend expects flat { qr_link, qr_duration } (lihat page.tsx), tapi GOWA membungkus di results
-    // Return flat + wrapper agar backward compatible dengan kedua shape
     const payload = result.results ?? (result as unknown as LoginResponse);
     return NextResponse.json(
       {
         qr_link: payload.qr_link,
         qr_duration: payload.qr_duration,
         device_id: payload.device_id ?? deviceId,
-        // keep wrapper for debugging
+
         results: payload,
         code: result.code,
         message: result.message,

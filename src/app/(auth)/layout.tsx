@@ -3,9 +3,6 @@ import { WMark } from "@/components/logo";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
-/*
- * Capabilities listed here are shipped MVP features, not marketing claims.
- */
 const CAPABILITIES = [
   "Connect via QR, sama seperti WhatsApp Web",
   "Auto-reply berbasis keyword dan regex",
@@ -28,13 +25,13 @@ export default async function AuthLayout({
 
   return (
     <div className="flex min-h-screen">
-      {/* Left: brand panel */}
+      {}
       <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-primary p-10 lg:flex xl:p-14">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary-hover via-primary to-emerald-900"
         />
-        {/* Decorative glow orb: adds depth to the brand panel, draws eye to the left side hierarchy */}
+        {}
         <div aria-hidden className="absolute -bottom-32 -right-24 h-96 w-96 rounded-full bg-white/5 blur-2xl" />
 
         <div className="relative flex items-center gap-2">
@@ -65,7 +62,7 @@ export default async function AuthLayout({
         </p>
       </div>
 
-      {/* Right: form */}
+      {}
       <div className="flex w-full items-center justify-center bg-background p-6 lg:w-1/2">
         <div className="w-full max-w-md">{children}</div>
       </div>

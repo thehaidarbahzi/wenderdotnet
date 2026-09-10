@@ -27,7 +27,6 @@ export async function POST(
     .single();
   if (!owned) return NextResponse.json({ error: "Device tidak ditemukan atau bukan milik Anda" }, { status: 403 });
 
-  // phone bisa dari query atau body
   const url = new URL(request.url);
   let phone = url.searchParams.get("phone");
   if (!phone) {
@@ -35,20 +34,20 @@ export async function POST(
       const body = await request.json();
       phone = body.phone;
     } catch {
-      // ignore
+
     }
   }
   if (!phone || typeof phone !== "string") {
     return NextResponse.json({ error: "Nomor HP wajib diisi" }, { status: 400 });
   }
-  // normalisasi: hanya digit, hapus +, spasi, -
+
   const normalized = phone.replace(/[^0-9]/g, "");
   if (normalized.length < 8) {
     return NextResponse.json({ error: "Format nomor HP tidak valid" }, { status: 400 });
   }
 
   try {
-    // openapi.yaml: POST /devices/{device_id}/login/code?phone=6289...
+
     const result = await gowa<GowaResponse<PairCodeResult>>({
       method: "POST",
       path: `/devices/${deviceId}/login/code`,

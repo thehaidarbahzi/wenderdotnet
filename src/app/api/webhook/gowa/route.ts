@@ -38,34 +38,42 @@ interface AutomationRow {
   target_jid: string | null;
 }
 
-// POST /api/webhook/gowa — receives webhook events from the bot
 export async function POST(request: Request) {
   const webhookSecret = process.env.WHATSAPP_WEBHOOK_SECRET;
 
-  // Verify HMAC signature if secret is configured
-  if (webhookSecret) {
-    const signature = request.headers.get("X-Hub-Signature-256");
-    if (!signature) {
-      return NextResponse.json({ error: "Missing signature" }, { status: 401 });
-    }
-
-    const body = await request.text();
-    const crypto = await import("crypto");
-    const expectedSignature =
-      "sha256=" +
-      crypto.createHmac("sha256", webhookSecret).update(body).digest("hex");
-
-    if (signature !== expectedSignature) {
-      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-    }
-
-    // Re-parse body for processing
-    const payload = JSON.parse(body);
-    return await processWebhookEvent(payload);
+  if (!webhookSecret) {
+    console.error("[webhook] WHATSAPP_WEBHOOK_SECRET not configured — rejecting");
+    return NextResponse.json({ error: "Webhook secret not configured" }, { status: 500 });
   }
 
-  // No secret configured — process directly
-  const payload = await request.json();
+  const signature = request.headers.get("X-Hub-Signature-256");
+  if (!signature) {
+    return NextResponse.json({ error: "Missing signature" }, { status: 401 });
+  }
+
+  const body = await request.text();
+
+  if (body.length > 1024 * 100) {
+    return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+  }
+
+  const crypto = await import("crypto");
+  const expectedSignature =
+    "sha256=" +
+    crypto.createHmac("sha256", webhookSecret).update(body).digest("hex");
+
+  const sigBuf = Buffer.from(signature);
+  const expBuf = Buffer.from(expectedSignature);
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  }
+
+  let payload: WebhookPayload;
+  try {
+    payload = JSON.parse(body);
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
   return await processWebhookEvent(payload);
 }
 
@@ -79,7 +87,6 @@ async function processWebhookEvent(payload: WebhookPayload) {
 
   const supabase = createServiceClient();
 
-  // Find the user who owns this device
   const { data: userDevice } = await supabase
     .from("user_devices")
     .select("user_id")
@@ -92,7 +99,6 @@ async function processWebhookEvent(payload: WebhookPayload) {
 
   const userId = userDevice.user_id;
 
-  // Log the event
   await supabase.from("logs").insert({
     user_id: userId,
     device_key: deviceId,
@@ -110,7 +116,6 @@ async function processWebhookEvent(payload: WebhookPayload) {
     metadata: payload?.payload || null,
   });
 
-  // Process message events for rule engine
   if (eventType === "message" && payload.payload) {
     await processMessageEvent(userId, deviceId, payload.payload);
   }
@@ -130,11 +135,9 @@ async function processMessageEvent(
   const text = messagePayload.body || messagePayload.message || messagePayload.text || "";
   const senderName = messagePayload.sender_display_name || messagePayload.from_name || null;
 
-  // Determine if it's a group or private chat
   const isGroup = from.endsWith("@g.us");
   const targetType = isGroup ? "group" : "private";
 
-  // Get applicable automations for this device (004: per-device, bukan global rules)
   const { data: automations } = await supabase
     .from("device_automations")
     .select("*")
@@ -147,13 +150,10 @@ async function processMessageEvent(
   for (const auto of automations as AutomationRow[]) {
     if (!auto.enabled) continue;
 
-    // Check target type match
     if (auto.target_type && auto.target_type !== targetType) continue;
 
-    // Check target JID match (1 row = 1 target_jid, multi grup = duplicate rows)
     if (auto.target_jid && auto.target_jid !== from) continue;
 
-    // Trigger match: prefix/contains/exact/regex
     let matches = false;
     const pat = auto.pattern ?? "";
     const lowerText = text.toLowerCase();
@@ -167,7 +167,7 @@ async function processMessageEvent(
         matches = regex.test(text);
       } catch {}
     } else {
-      // fallback keyword
+
       matches = lowerText.includes(lowerPat);
     }
     if (!matches) continue;
@@ -202,7 +202,7 @@ async function processMessageEvent(
         metadata: { automation_id: auto.id, trigger_category: auto.trigger_category } as unknown as Record<string, unknown>,
       });
     } catch {
-      // silent — one failing automasi tidak block lainnya
+
     }
   }
 }

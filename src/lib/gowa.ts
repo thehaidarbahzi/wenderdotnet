@@ -43,7 +43,7 @@ export async function gowa<T = unknown>(
   }
 
   const url = buildUrl(path, query);
-  // Prod: 8s timeout agar API tidak hang kalau GOWA down; Next.js route tetap return disconnected
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
   const res = await fetch(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(timeout));

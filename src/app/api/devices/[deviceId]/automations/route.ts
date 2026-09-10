@@ -55,8 +55,8 @@ export async function POST(
     duration = 0,
     is_forwarded = false,
     target_type,
-    target_jids, // array untuk duplicate per grup
-    target_jid, // single compat
+    target_jids,
+    target_jid,
     enabled = true,
   } = body as {
     name?: string;
@@ -84,13 +84,11 @@ export async function POST(
     return NextResponse.json({ error: "duration tidak valid" }, { status: 400 });
   }
 
-  // Normalize target_jids: if array provided use it, else single target_jid, else [null] for semua
   let jids: (string | null)[] = [];
   if (Array.isArray(target_jids) && target_jids.length > 0) jids = target_jids;
   else if (target_jid) jids = [target_jid];
-  else jids = [null as unknown as string]; // semua
+  else jids = [null as unknown as string];
 
-  // Duplicate per grup: insert per jid
   const rows = jids.map((jid) => ({
     user_id: user.id,
     device_key: deviceId,
@@ -111,7 +109,7 @@ export async function POST(
   const { data, error } = await supabase.from("device_automations").insert(rows).select();
 
   if (error) {
-    // handle duplicate unique violation
+
     if (error.code === "23505") {
       return NextResponse.json({ error: "Automasi dengan nama/pola/target sama sudah ada di device ini" }, { status: 409 });
     }

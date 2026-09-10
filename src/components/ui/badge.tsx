@@ -8,10 +8,6 @@ type BadgeVariant =
   | "info"
   | "whatsapp";
 
-/*
- * Text uses *-strong tokens: the base semantic colors fail WCAG AA for small
- * text on light surfaces (amber/rose), so badges render the darker shade.
- */
 const badgeStyles: Record<BadgeVariant, string> = {
   default: "bg-surface-subtle text-text-secondary",
   success: "bg-success/10 text-success-strong",

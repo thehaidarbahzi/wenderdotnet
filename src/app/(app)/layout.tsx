@@ -7,7 +7,7 @@ export default function AppLayout({
 }) {
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
-      {/* Subtle decorative layer — same language as landing hero but restrained */}
+      {}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute -left-40 -top-40 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
         <div className="absolute -right-32 top-24 h-64 w-64 rounded-full bg-whatsapp/10 blur-3xl" />

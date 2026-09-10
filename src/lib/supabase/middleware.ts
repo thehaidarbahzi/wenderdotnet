@@ -29,7 +29,6 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protected routes (004: /rules dihapus, pindah ke /devices/[id])
   const protectedPaths = ["/devices", "/logs"];
   const isProtected = protectedPaths.some((p) =>
     request.nextUrl.pathname.startsWith(p)
@@ -43,7 +42,6 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // Redirect logged-in users away from auth
   if (
     pathname.startsWith("/auth") &&
     !pathname.startsWith("/auth/callback") &&
@@ -54,9 +52,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 404 auto-redirect: unknown routes -> landing or /devices if authenticated
-  // Known prefixes: /, /auth, /devices, /logs, /api, /icon.svg (004: /rules removed)
-  const knownPrefixes = ["/", "/auth", "/devices", "/logs", "/api", "/icon.svg"];
+  const knownPrefixes = ["/", "/auth", "/devices", "/logs", "/api", "/icon.svg", "/privacy", "/terms"];
   const isKnown =
     pathname === "/" ||
     knownPrefixes.some((p) => p !== "/" && pathname.startsWith(p));

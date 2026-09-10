@@ -1,11 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 
-/*
- * W mark traced from public/icon.svg. Uses currentColor so it inherits
- * the text color of the parent element. Set the color to #34D399 (the SVG's
- * native green) in navbar/footer to match the user's request.
- */
 export function WMark({ className, color }: { className?: string; color?: string }) {
   const strokeColor = color ?? "currentColor";
   return (
@@ -31,7 +26,6 @@ export function WMark({ className, color }: { className?: string; color?: string
   );
 }
 
-/* LogoMark kotak berwarna — digunakan di hero preview & bagian tertentu */
 export function LogoMark({ className, color }: { className?: string; color?: string }) {
   return (
     <span

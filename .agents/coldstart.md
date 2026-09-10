@@ -195,7 +195,7 @@ src/
 6. **User scan QR / input Kode** pakai WhatsApp (mirip WA Web) → bot update status internal → `connecting` → `logged_in`.
 7. **App listen status bot**: awal polling `GET /devices/:id/status` 3s untuk `connecting` + **global 5s `GET /api/devices` per-device** (visibility-aware, 1 call, bukan N+1) + auto-close modal ketika `logged_in`; WS `/ws?device_id` disiapkan sebagai fallback untuk instant disconnect (BOT_AUTH server-only jadi polling jadi utama).
 8. **Saat status = `logged_in`** → app insert row `user_devices(name, device_key=device_id)` → device resmi masuk DB, muncul di list (auto).
-9. **Konfigurasi di `/devices/[deviceId]` detail** (tab Webhook + Automasi) — bukan `/rules` lagi. Webhook per-device (`PATCH /devices/{id}/webhook` + Test dummy real), Automasi per-device (`device_automations` via `POST /api/devices/:id/automations`, trigger `prefix/contains/exact/regex` → `keyword/regex`, opsi `is_reply`/`mentions` `@everyone`/`duration`/`is_forwarded` per `openapi.yaml:1210`, target `group/private` + group picker `GET /user/my/groups` via `X-Device-Id`, cached 30s, virtual 100, duplicate per `target_jid`).
+9. **Konfigurasi di `/devices/[deviceId]` detail** (tab Automasi saja — Webhook per-device dihapus, tidak pengaruh automasi) — bukan `/rules` lagi. Automasi per-device (`device_automations` via `POST /api/devices/:id/automations`, trigger `prefix/contains/exact/regex` → `keyword/regex`, opsi `is_reply`/`mentions` `@everyone`/`duration`/`is_forwarded` per `openapi.yaml:1210`, target `group/private` + group picker `GET /user/my/groups` via `X-Device-Id`, cached 30s, virtual 100, duplicate per `target_jid`).
 10. **Device berjalan** — bot kirim webhook events ke Next.js (`/api/webhook/gowa`); app verifikasi HMAC, evaluasi `device_automations` per `device_key`, eksekusi via `POST /send/message` (mentions/duration/forwarded), tulis `logs`; dashboard menampilkan timeline.
 
 ### 4.2 Device Lifecycle (detail)
@@ -290,7 +290,7 @@ Layout: **kiri = brand panel** (bg-primary gradient, headline, capabilities list
 1. Header: Back link + nama + badge + JID + actions Hubungkan/Disconnect
 2. Tabs `Overview | Webhook | Automasi` (`role="tablist"`, `aria-selected`)
 3. **Overview:** Status (Signal/WiFiOff), Device ID, JID, auto-refresh 5s
-4. **Webhook:** Form `webhook_url*`, `webhook_secret`, `webhook_events`, `Skip TLS Verify` (`Toggle`) → `Simpan` (`PATCH /api/devices/:id/webhook` → `PATCH /devices/{id}/webhook` GOWA, `loading+disabled`) + `Test Kirim Dummy` (`POST /api/devices/:id/webhook/test` hit real `webhook_url`, tampil status/body, `loading+disabled`)
+4. **Automasi:** Form automasi per-device (hapus Webhook tab — tidak dipakai, automasi tetap jalan via global webhook `POST /api/webhook/gowa`)
 5. **Automasi:** List per-device (`GET /api/devices/:id/automations`), card: nama + `trigger_category` (prefix/contains/exact/regex) + pattern→reply + badges `target_type/target_jid`, `is_reply`/`mentions`/`duration` + `Toggle enabled` (`loading` per row) + `Edit`/`Delete` (`loading+disabled`). **Tambah/Edit Modal:** Nama, Kategori (select), Tipe Target (Semua/Group/Private) → jika Group tampil **Group Picker** (`GET /api/devices/:id/groups` via `X-Device-Id`, cached 30s, limit 500 `openapi.yaml:1074`, search debounce, virtual 100, multi-select → **duplicate per grup** 1 automasi per `target_jid`), Pola, Balasan, checkbox `Reply`/`Forwarded`, Mentions (`@everyone,628xxx` per `openapi.yaml:1244`), Duration (0/86400/604800/7776000). Simpan `POST /api/devices/:id/automations` (array `target_jids` → N rows) atau `PUT /:id/:automationId`, semua `loading+disabled`.
 
 > **Rules global dihapus TOTAL** di `004_per_device_automations.sql` (DROP `rules`/`device_rules`), nav `Rules` dihapus dari `src/components/topbar.tsx:12`.
@@ -552,7 +552,7 @@ Semua token sudah diimplementasi di `src/app/globals.css`:
 | Device list                   | ✅ Implemented | `(app)/devices/page.tsx`            | CRUD, badges, **5s per-device polling** (visibility-aware, 1 call), auto-close QR/code modal, `Detail` link, anti double-click |
 | Device add + QR/Code connect  | ✅ Implemented | `(app)/devices/page.tsx`            | Modal tab **QR** (`qr_link`) / **Kode** (`pair_code`), `loading+disabled` guard, auto-refresh |
 | Device detail                 | ✅ Implemented | `(app)/devices/[deviceId]/page.tsx` | Tabs **Overview/Webhook/Automasi**, status 5s polling, WS fallback |
-| Device Webhook                | ✅ Implemented | `/api/devices/[id]/webhook` + `/test` | Per-device `webhook_*` (PATCH GOWA), Test dummy real, guard |
+| Device Webhook                | ❌ Removed     | — | Per-device webhook dihapus (tidak pengaruh automasi, yang pakai global `POST /api/webhook/gowa`) |
 | Device Automasi               | ✅ Implemented | `/api/devices/[id]/automations` + `/[aid]` + `page.tsx` | Per-device `device_automations` (prefix/contains/exact/regex → keyword/regex, `is_reply`/`mentions` `@everyone`/duration/`is_forwarded`, `target_jid` 1 per row duplicate per grup), group picker `GET /groups` (X-Device-Id, cached 30s, search, virtual 100), guard |
 | Group picker                  | ✅ Implemented | `page.tsx` `GroupItem` | `GET /user/my/groups` 500 limit, cached, search debounce, multi-select |
 | Device delete                 | ✅ Implemented | `(app)/devices/page.tsx` + `[deviceId]` | Confirmation modal `loading+disabled` |
@@ -600,5 +600,7 @@ File `design.png` di `.agents/` menunjukkan desain landing page untuk produk "Sl
 > **Kesimpulan:** `design.png` adalah referensi visual/inspirasi, bukan wireframe eksak untuk wenderdotnet. Implementasi aktual mengikuti spec coldstart.md dengan penyesuaian warna (Emerald bukan Indigo) dan beberapa deviation yang tercatat di atas.
 
 ---
+
+_Update 2026-09-10:_ Webhook per-device dihapus total (`src/app/api/devices/[deviceId]/webhook/*` + tab `Webhook` di detail), `src` comments dihapus (32 files, `://` preserve, `privacy/terms` dikecualikan), skeleton cuma initial (`loading && empty`), double notif QR dedup via `notifiedRef`.
 
 _Dokumen ini adalah sumber kebenaran (source of truth) pengembangan wenderdotnet. Ubah hanya melalui proses persetujuan eksplisit._

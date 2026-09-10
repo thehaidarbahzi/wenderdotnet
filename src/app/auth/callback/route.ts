@@ -8,7 +8,13 @@ export async function GET(request: Request) {
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type");
   const nextParam = searchParams.get("next") ?? "/devices";
-  const next = nextParam.startsWith("/") ? nextParam : "/devices";
+  let next = "/devices";
+  if (nextParam.startsWith("/") && !nextParam.startsWith("//") && !nextParam.includes("\\") && !nextParam.includes(":")) {
+    try {
+      const url = new URL(nextParam, origin);
+      if (url.origin === origin) next = url.pathname + url.search + url.hash;
+    } catch {}
+  }
 
   const supabase = await createClient();
 

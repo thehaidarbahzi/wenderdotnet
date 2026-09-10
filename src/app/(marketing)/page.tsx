@@ -75,9 +75,9 @@ const STEPS = [
 export default function LandingPage() {
   return (
     <>
-      {/* Hero — focal point, largest visual weight */}
+      {}
       <section className="relative overflow-hidden">
-        {/* Decorative background elements */}
+        {}
         <div className="absolute inset-0 -z-10">
           <div className="absolute -left-40 -top-40 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
           <div className="absolute -right-32 top-1/2 h-64 w-64 rounded-full bg-whatsapp/10 blur-3xl" />
@@ -129,12 +129,12 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* How it works — tighter rhythm, left-aligned for variety */}
+      {}
       <section
         id="cara-pakai"
         className="relative border-t border-border bg-surface-subtle/50"
       >
-        {/* Subtle dot pattern background */}
+        {}
         <div
           className="absolute inset-0 -z-0 opacity-30"
           style={{
@@ -182,7 +182,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Features — alternating visual/text sections with varied rhythm */}
+      {}
       <section id="fitur" className="border-t border-border">
         <div className="mx-auto max-w-6xl flex flex-col gap-20 px-4 py-20 sm:gap-28 sm:py-28 lg:px-8">
           <ScrollReveal>
@@ -255,7 +255,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Creator statement — quote style, tighter */}
+      {}
       <section
         id="tentang"
         className="relative border-t border-border bg-surface-subtle/50"
@@ -288,12 +288,12 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Newsletter — compact, clear purpose */}
+      {}
       <section
         id="newsletter"
         className="relative border-t border-border overflow-hidden"
       >
-        {/* Decorative background */}
+        {}
         <div className="absolute inset-0 -z-0">
           <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
           <div className="absolute -left-20 bottom-0 h-48 w-48 rounded-full bg-whatsapp/5 blur-3xl" />
