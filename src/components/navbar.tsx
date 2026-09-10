@@ -50,7 +50,7 @@ export function Navbar() {
             onClick={() => setOpen(!open)}
             aria-expanded={open}
             aria-label={open ? "Tutup menu" : "Buka menu"}
-            className="-mr-2 grid h-10 w-10 place-items-center rounded-[var(--radius-sm)] text-text-secondary transition-colors hover:bg-surface-subtle hover:text-text-primary sm:hidden"
+            className="-mr-2 grid h-10 w-10 place-items-center rounded-sm text-text-secondary transition-colors hover:bg-surface-subtle hover:text-text-primary sm:hidden"
           >
             {open ? (
               <X className="h-5 w-5" aria-hidden />
@@ -70,7 +70,7 @@ export function Navbar() {
                 key={link.href}
                 href={link.href}
                 onClick={close}
-                className="rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-subtle hover:text-text-primary"
+                className="rounded-sm px-3 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-subtle hover:text-text-primary"
               >
                 {link.label}
               </Link>
