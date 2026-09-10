@@ -415,7 +415,7 @@ export default function DeviceDetailPage() {
 
       {tab === "webhook" && (
         <div className="space-y-4 max-w-2xl">
-          {webhookLoading ? <Skeleton className="h-64 w-full" /> : (
+          {webhookLoading && !webhook.webhook_url ? <Skeleton className="h-64 w-full" /> : (
             <>
               <Input label="Webhook URL" placeholder="https://your-app.com/api/webhook/gowa" value={webhook.webhook_url} onChange={(e) => setWebhook({ ...webhook, webhook_url: e.target.value })} />
               <Input label="Webhook Secret (opsional)" placeholder="super-secret" value={webhook.webhook_secret} onChange={(e) => setWebhook({ ...webhook, webhook_secret: e.target.value })} />
@@ -426,6 +426,7 @@ export default function DeviceDetailPage() {
                 <Button variant="secondary" onClick={testWebhook} loading={webhookTesting} disabled={webhookTesting || !webhook.webhook_url}><Send className="h-4 w-4" />Test Kirim Dummy</Button>
               </div>
               {webhookTestResult && <div className={`rounded-lg border p-3 text-xs ${webhookTestResult.ok ? "border-success/20 bg-success/5 text-success-strong" : "border-error/20 bg-error/5 text-error-strong"}`}><p>Webhook: {webhookTestResult.webhook_url ?? webhook.webhook_url}</p><p>Status: {webhookTestResult.status} {webhookTestResult.ok ? "OK" : webhookTestResult.error}</p>{webhookTestResult.body && <pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap break-all bg-surface p-2 rounded">{webhookTestResult.body}</pre>}</div>}
+              {webhookLoading && <p className="text-xs text-text-muted flex items-center gap-1"><RefreshCw className="h-3 w-3 animate-spin" />Memuat ulang...</p>}
             </>
           )}
         </div>
@@ -433,8 +434,8 @@ export default function DeviceDetailPage() {
 
       {tab === "automasi" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between"><h3 className="font-semibold text-text-primary">Automasi untuk device ini</h3><Button onClick={() => { setEditingAuto(null); setAutoForm({ name: "", trigger_category: "contains", pattern: "", reply: "", is_reply: false, mentions: "", duration: 0, is_forwarded: false, target_type: "", target_jids: [] }); setAutoModal(true); }}><Plus className="h-4 w-4" />Tambah</Button></div>
-          {autoLoading ? <Skeleton className="h-32 w-full" /> : automations.length === 0 ? <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-text-muted">Belum ada automasi. Klik Tambah untuk buat: kata depan / contains / exact / regex → balasan + opsi reply/tag.</div> : (
+          <div className="flex items-center justify-between"><h3 className="font-semibold text-text-primary">Automasi untuk device ini</h3><div className="flex items-center gap-2">{autoLoading && automations.length > 0 && <span className="text-xs text-text-muted flex items-center gap-1"><RefreshCw className="h-3 w-3 animate-spin" />Memuat...</span>}<Button onClick={() => { setEditingAuto(null); setAutoForm({ name: "", trigger_category: "contains", pattern: "", reply: "", is_reply: false, mentions: "", duration: 0, is_forwarded: false, target_type: "", target_jids: [] }); setAutoModal(true); }}><Plus className="h-4 w-4" />Tambah</Button></div></div>
+          {autoLoading && automations.length === 0 ? <Skeleton className="h-32 w-full" /> : automations.length === 0 ? <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-text-muted">Belum ada automasi. Klik Tambah untuk buat: kata depan / contains / exact / regex → balasan + opsi reply/tag.</div> : (
             <div className="grid gap-3">
               {automations.map((a) => (
                 <div key={a.id} className="rounded-xl border border-border bg-surface p-4">

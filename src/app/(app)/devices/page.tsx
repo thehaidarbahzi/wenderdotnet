@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { Plus, Trash2, RefreshCw, QrCode, Plug, Unplug, Smartphone, Signal, WifiOff, KeyRound, Copy, Check, Phone, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ export default function DevicesPage() {
   const [deleting, setDeleting] = useState(false);
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
   const [hubungkanLoadingId, setHubungkanLoadingId] = useState<string | null>(null);
+  const notifiedRef = useRef<Set<string>>(new Set());
 
   // QR / Code tabbing
   const [activeTab, setActiveTab] = useState<"qr" | "code">("qr");
@@ -72,7 +73,7 @@ export default function DevicesPage() {
   }, [fetchDevices]);
 
   // Poll status of connecting devices — backend wraps di results (openapi.yaml DeviceStatusResponse)
-  // + auto-close QR modal ketika logged_in
+  // + auto-close QR modal ketika logged_in — dedup biar tidak double notif dengan 5s polling
   useEffect(() => {
     const connecting = devices.filter((d) => d.state === "connecting");
     if (connecting.length === 0) return;
@@ -83,9 +84,12 @@ export default function DevicesPage() {
           if (res.ok) {
             const data = await res.json();
             const loggedIn = data.is_logged_in || data.results?.is_logged_in || data.state === "logged_in";
-            if (loggedIn) {
+            if (loggedIn && !notifiedRef.current.has(d.id)) {
+              notifiedRef.current.add(d.id);
               toast.success(`${d.display_name} connected!`);
               setQrModal(false);
+              setQrUrl("");
+              setPairCode(null);
               fetchDevices();
             }
           }
@@ -97,6 +101,7 @@ export default function DevicesPage() {
 
   // Auto refresh per-device 5s (tanpa whole page) — visibility-aware, update semua state
   // Ketika bot cabut, state langsung ke disconnected tanpa repeat hit per card (1 call GET /api/devices)
+  // Skeleton tidak ditampilkan lagi setelah initial (biarin list aja)
   useEffect(() => {
     if (devices.length === 0) return;
     let interval: ReturnType<typeof setInterval> | null = null;
@@ -113,10 +118,15 @@ export default function DevicesPage() {
             const same = prev.every((p, i) => p.id === fresh[i].id && p.state === fresh[i].state);
             return same ? prev : fresh;
           });
-          // auto-close modal jika selectedDevice sudah logged_in
+          // bersihkan notified jika device kembali disconnected (biar bisa notif lagi next connect)
+          for (const d of fresh as DeviceWithStatus[]) {
+            if (d.state !== "logged_in") notifiedRef.current.delete(d.id);
+          }
+          // auto-close modal jika selectedDevice sudah logged_in — dedup
           if (qrModal && selectedDevice) {
             const matched = fresh.find((d: DeviceWithStatus) => d.id === selectedDevice.id);
-            if (matched?.state === "logged_in") {
+            if (matched?.state === "logged_in" && !notifiedRef.current.has(matched.id)) {
+              notifiedRef.current.add(matched.id);
               toast.success(`${matched.display_name} connected!`);
               setQrModal(false);
               setQrUrl("");
@@ -188,6 +198,7 @@ export default function DevicesPage() {
     if (hubungkanLoadingId) return;
     setHubungkanLoadingId(device.id);
     try {
+      notifiedRef.current.delete(device.id);
       setSelectedDevice(device);
       setActiveTab("qr");
       setQrUrl("");
