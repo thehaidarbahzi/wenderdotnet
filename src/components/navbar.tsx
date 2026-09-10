@@ -23,7 +23,7 @@ export function Navbar() {
     <nav className="sticky top-0 z-40 border-b border-border bg-surface/85 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-6xl items-center px-4 sm:px-6 lg:px-8">
         <div className="flex flex-1 items-center">
-          <Link href="/devices" className="flex items-center gap-2" onClick={close}>
+          <Link href="/" className="flex items-center gap-2" onClick={close}>
             <WMark className="h-5 w-5 text-[#34D399]" />
             <span className="text-base font-semibold tracking-tight text-text-primary">
               wenderdotnet
