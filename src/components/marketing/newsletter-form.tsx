@@ -26,14 +26,16 @@ export function NewsletterForm() {
         await subscribeNewsletter(email);
         setSubscribed(true);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Gagal berlangganan. Coba lagi.");
+        setError(
+          err instanceof Error ? err.message : "Gagal berlangganan. Coba lagi.",
+        );
       }
     });
   }
 
   if (subscribed) {
     return (
-      <div className="mx-auto flex max-w-sm items-center justify-center gap-2 rounded-[var(--radius-md)] border border-success/30 bg-success/10 px-4 py-3 text-sm text-success-strong">
+      <div className="mx-auto flex max-w-sm items-center justify-center gap-2 rounded-sm border border-success/30 bg-success/10 px-4 py-3 text-sm text-success-strong">
         <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
         Terdaftar! Update berikutnya dikirim ke email Anda.
       </div>
@@ -57,17 +59,26 @@ export function NewsletterForm() {
           aria-invalid={!!error}
           aria-describedby={error ? "newsletter-error" : undefined}
           className={cn(
-            "h-10 min-w-0 flex-1 rounded-[var(--radius-md)] border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted",
+            "h-10 min-w-0 flex-1 rounded-sm border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted",
             "focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary",
-            error && "border-error focus:border-error focus:ring-error/40"
+            error && "border-error focus:border-error focus:ring-error/40",
           )}
         />
-        <Button type="submit" disabled={isPending} loading={isPending} className="shrink-0">
+        <Button
+          type="submit"
+          disabled={isPending}
+          loading={isPending}
+          className="shrink-0 rounded-sm"
+        >
           Berlangganan
         </Button>
       </div>
       {error && (
-        <p id="newsletter-error" role="alert" className="mt-2 text-left text-sm text-error-strong">
+        <p
+          id="newsletter-error"
+          role="alert"
+          className="mt-2 text-left text-sm text-error-strong rounded-sm"
+        >
           {error}
         </p>
       )}

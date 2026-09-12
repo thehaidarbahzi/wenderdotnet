@@ -92,7 +92,7 @@ export async function POST(
   const rows = jids.map((jid) => ({
     user_id: user.id,
     device_key: deviceId,
-    name: jids.length > 1 ? `${name} — ${jid}` : name,
+    name: jids.length > 1 ? `${name}: ${jid}` : name,
     trigger_category,
     trigger_type: derivedTriggerType,
     pattern,

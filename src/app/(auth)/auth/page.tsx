@@ -35,7 +35,7 @@ export default function AuthForm() {
     }
 
     toast.success("Berhasil masuk!");
-    router.push("/devices");
+    router.replace("/devices");
     router.refresh();
   }
 
@@ -78,7 +78,7 @@ export default function AuthForm() {
 
     if (data.session) {
       toast.success("Berhasil daftar!");
-      router.push("/devices");
+      router.replace("/devices");
       router.refresh();
     } else {
       toast.success("Akun berhasil dibuat! Cek email untuk verifikasi.");
@@ -123,13 +123,13 @@ export default function AuthForm() {
       </div>
 
       {}
-      <div className="mb-6 flex rounded-[var(--radius-md)] border border-border bg-surface-subtle p-1">
+      <div className="mb-6 flex rounded-sm border border-border bg-surface-subtle p-1">
         <button
           onClick={() => {
             setTab("login");
             setError("");
           }}
-          className={`flex-1 rounded-[var(--radius-sm)] py-1.5 text-sm font-medium transition-colors ${
+          className={`flex-1 rounded-sm py-1.5 text-sm font-medium transition-colors ${
             tab === "login"
               ? "bg-surface text-text-primary shadow-sm"
               : "text-text-muted hover:text-text-secondary"
@@ -142,7 +142,7 @@ export default function AuthForm() {
             setTab("register");
             setError("");
           }}
-          className={`flex-1 rounded-[var(--radius-sm)] py-1.5 text-sm font-medium transition-colors ${
+          className={`flex-1 rounded-sm py-1.5 text-sm font-medium transition-colors ${
             tab === "register"
               ? "bg-surface text-text-primary shadow-sm"
               : "text-text-muted hover:text-text-secondary"
@@ -155,7 +155,7 @@ export default function AuthForm() {
       {error && (
         <div
           role="alert"
-          className="mb-4 rounded-[var(--radius-md)] bg-error/10 p-3 text-sm text-error-strong"
+          className="mb-4 rounded-sm bg-error/10 p-3 text-sm text-error-strong"
         >
           {error}
         </div>

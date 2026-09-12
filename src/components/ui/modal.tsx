@@ -42,7 +42,7 @@ export function Modal({ open, onClose, children, title, className }: ModalProps)
         aria-modal="true"
         aria-label={title}
         className={cn(
-          "relative z-10 w-full max-w-lg rounded-[var(--radius-lg)] border border-border bg-surface p-6 shadow-lg",
+          "relative z-10 w-full max-w-lg rounded-sm border border-border bg-surface p-6 shadow-lg",
           "animate-modal",
           className
         )}
@@ -55,7 +55,7 @@ export function Modal({ open, onClose, children, title, className }: ModalProps)
             type="button"
             onClick={onClose}
             aria-label="Tutup dialog"
-            className="grid h-8 w-8 place-items-center rounded-[var(--radius-sm)] text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-primary"
+            className="grid h-8 w-8 place-items-center rounded-sm text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-primary cursor-pointer hover:cursor-pointer active:cursor-pointer active:scale-95"
           >
             <X className="h-4 w-4" />
           </button>

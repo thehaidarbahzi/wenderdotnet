@@ -35,7 +35,7 @@ export default async function AuthLayout({
         <div aria-hidden className="absolute -bottom-32 -right-24 h-96 w-96 rounded-full bg-white/5 blur-2xl" />
 
         <div className="relative flex items-center gap-2">
-          <span className="grid h-7 w-7 place-items-center rounded-[var(--radius-md)] bg-white/15 text-white">
+          <span className="grid h-7 w-7 place-items-center rounded-sm bg-white/15 text-white">
             <WMark />
           </span>
           <span className="text-base font-semibold tracking-tight text-white">

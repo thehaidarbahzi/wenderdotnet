@@ -12,7 +12,7 @@ export function ThemeToggle() {
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
       aria-label="Ganti tema terang/gelap"
       title="Ganti tema"
-      className="relative grid h-9 w-9 place-items-center rounded-[var(--radius-sm)] text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-primary"
+      className="relative grid h-9 w-9 place-items-center rounded-sm text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-primary cursor-pointer hover:cursor-pointer active:cursor-pointer active:scale-95"
     >
       {}
       <Sun className="col-start-1 row-start-1 h-4 w-4 scale-100 rotate-0 transition-transform duration-200 dark:scale-0 dark:-rotate-90" />

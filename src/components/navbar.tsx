@@ -8,12 +8,12 @@ import { WMark } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 
 export const NAV_LINKS = [
-  { href: "/#fitur", label: "Fitur" },
   { href: "/#cara-pakai", label: "Cara pakai" },
+  { href: "/#fitur", label: "Fitur" },
 ] as const;
 
 const linkClass =
-  "rounded-[var(--radius-sm)] px-3 py-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary";
+  "rounded-sm px-3 py-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary";
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
@@ -50,7 +50,7 @@ export function Navbar() {
             onClick={() => setOpen(!open)}
             aria-expanded={open}
             aria-label={open ? "Tutup menu" : "Buka menu"}
-            className="-mr-2 grid h-10 w-10 place-items-center rounded-sm text-text-secondary transition-colors hover:bg-surface-subtle hover:text-text-primary sm:hidden"
+            className="-mr-2 grid h-10 w-10 place-items-center rounded-sm text-text-secondary transition-colors hover:bg-surface-subtle hover:text-text-primary sm:hidden cursor-pointer hover:cursor-pointer active:cursor-pointer active:scale-95"
           >
             {open ? (
               <X className="h-5 w-5" aria-hidden />

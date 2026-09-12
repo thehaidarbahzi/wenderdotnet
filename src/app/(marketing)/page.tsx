@@ -75,9 +75,7 @@ const STEPS = [
 export default function LandingPage() {
   return (
     <>
-      {}
       <section className="relative overflow-hidden">
-        {}
         <div className="absolute inset-0 -z-10">
           <div className="absolute -left-40 -top-40 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
           <div className="absolute -right-32 top-1/2 h-64 w-64 rounded-full bg-whatsapp/10 blur-3xl" />
@@ -93,7 +91,7 @@ export default function LandingPage() {
                   <span className="relative z-10 text-primary">
                     satu dashboard
                   </span>
-                  <span className="absolute bottom-1 left-0 right-0 h-3 bg-primary/20 -z-0" />
+                  <span className="absolute bottom-1 left-0 right-0 h-3 bg-primary/20 z-0" />
                 </span>
               </h1>
             </ScrollReveal>
@@ -129,14 +127,12 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {}
       <section
         id="cara-pakai"
         className="relative border-t border-border bg-surface-subtle/50"
       >
-        {}
         <div
-          className="absolute inset-0 -z-0 opacity-30"
+          className="absolute inset-0 z-0 opacity-30"
           style={{
             backgroundImage:
               "radial-gradient(circle, var(--primary) 1px, transparent 1px)",
@@ -147,9 +143,6 @@ export default function LandingPage() {
         <div className="relative mx-auto max-w-6xl px-4 py-16 sm:py-20 lg:px-8">
           <ScrollReveal>
             <div className="max-w-xl">
-              <p className="mb-2 font-mono text-xs uppercase tracking-widest text-primary">
-                Cara kerja
-              </p>
               <h2 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
                 Jalan dalam tiga langkah
               </h2>
@@ -162,8 +155,8 @@ export default function LandingPage() {
           <ol className="mt-10 grid gap-x-8 gap-y-6 sm:grid-cols-3">
             {STEPS.map((step, i) => (
               <ScrollReveal key={step.title} delay={i * 100}>
-                <li className="group relative rounded-xl border border-border bg-surface p-6 shadow-sm transition-all hover:shadow-md hover:border-primary/30">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
+                <li className="group relative rounded-sm border border-border bg-surface p-6 shadow-sm transition-all hover:shadow-md hover:border-primary/30">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-sm bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
                     {step.icon}
                   </div>
                   <span className="font-mono text-xs text-primary">
@@ -182,7 +175,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {}
       <section id="fitur" className="border-t border-border">
         <div className="mx-auto max-w-6xl flex flex-col gap-20 px-4 py-20 sm:gap-28 sm:py-28 lg:px-8">
           <ScrollReveal>
@@ -194,14 +186,17 @@ export default function LandingPage() {
                 Disconnect dan sambungkan ulang tanpa konfigurasi ulang."
               ctaLabel="Hubungkan nomor pertama"
               visual={
-                <div className="relative">
-                  <div className="absolute -inset-4 rounded-2xl bg-primary/5 blur-xl" />
+                <div className="relative flex w-full items-center justify-center isolate">
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute left-1/2 top-1/2 h-[88%] w-[88%] -translate-x-1/2 -translate-y-1/2 rounded-sm bg-primary/10 blur-2xl"
+                  />
                   <Image
                     src="/illustrations/device-stack.svg"
                     alt="Device management dashboard"
                     width={300}
                     height={300}
-                    className="relative rounded-xl shadow-lg"
+                    className="relative block h-auto w-full max-w-75 mx-auto rounded-sm shadow-lg"
                   />
                 </div>
               }
@@ -217,14 +212,17 @@ export default function LandingPage() {
                 tidak bisa memegang ponsel."
               ctaLabel="Coba aturan auto-reply"
               visual={
-                <div className="relative">
-                  <div className="absolute -inset-4 rounded-2xl bg-whatsapp/5 blur-xl" />
+                <div className="relative flex w-full items-center justify-center isolate">
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute left-1/2 top-1/2 h-[88%] w-[92%] -translate-x-1/2 -translate-y-1/2 rounded-sm bg-whatsapp/10 blur-2xl"
+                  />
                   <Image
                     src="/illustrations/auto-reply.svg"
                     alt="Auto-reply chat flow"
                     width={300}
                     height={200}
-                    className="relative rounded-xl shadow-lg"
+                    className="relative block h-auto w-full max-w-[320px] mx-auto rounded-sm shadow-lg"
                   />
                 </div>
               }
@@ -239,14 +237,17 @@ export default function LandingPage() {
                 jenis event."
               ctaLabel="Lihat contoh lognya"
               visual={
-                <div className="relative">
-                  <div className="absolute -inset-4 rounded-2xl bg-info/5 blur-xl" />
+                <div className="relative flex w-full items-center justify-center isolate">
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute left-1/2 top-1/2 h-[88%] w-[90%] -translate-x-1/2 -translate-y-1/2 rounded-sm bg-info/10 blur-2xl"
+                  />
                   <Image
                     src="/illustrations/logs-timeline.svg"
                     alt="Activity log timeline"
                     width={300}
                     height={250}
-                    className="relative rounded-xl shadow-lg"
+                    className="relative block h-auto w-full max-w-[320px] mx-auto rounded-sm shadow-lg"
                   />
                 </div>
               }
@@ -255,12 +256,11 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {}
       <section
         id="tentang"
         className="relative border-t border-border bg-surface-subtle/50"
       >
-        <div className="absolute inset-0 -z-0 opacity-20">
+        <div className="absolute inset-0 z-0 opacity-20">
           <Image
             src="/illustrations/dot-pattern.svg"
             alt=""
@@ -277,24 +277,21 @@ export default function LandingPage() {
                 WhatsApp tanpa harus memahami teknis server. Setup simpel,
                 kontrol penuh, dan bisa di-host sendiri.&rdquo;
               </blockquote>
-              <figcaption className="mt-4 text-sm">
+              <figcaption className="mt-4 text-base">
                 <span className="font-medium text-text-primary">
                   Tim wenderdotnet
                 </span>
-                <span className="text-text-muted"> · pembuat proyek</span>
               </figcaption>
             </figure>
           </ScrollReveal>
         </div>
       </section>
 
-      {}
       <section
         id="newsletter"
         className="relative border-t border-border overflow-hidden"
       >
-        {}
-        <div className="absolute inset-0 -z-0">
+        <div className="absolute inset-0 z-0">
           <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
           <div className="absolute -left-20 bottom-0 h-48 w-48 rounded-full bg-whatsapp/5 blur-3xl" />
         </div>
@@ -332,11 +329,17 @@ function SectionFeature({
   reversed?: boolean;
 }) {
   return (
-    <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-      <div className={reversed ? "order-1 lg:order-2" : "order-2 lg:order-1"}>
-        {visual}
+    <div className="grid items-center gap-8 sm:gap-12 lg:grid-cols-2 lg:gap-16">
+      <div
+        className={`flex w-full items-center justify-center order-1 ${reversed ? "lg:order-2" : "lg:order-1"}`}
+      >
+        <div className="flex w-full max-w-90 items-center justify-center">
+          {visual}
+        </div>
       </div>
-      <div className={reversed ? "order-2 lg:order-1" : "order-1 lg:order-2"}>
+      <div
+        className={`order-2 flex flex-col items-center text-center lg:items-start lg:text-left ${reversed ? "lg:order-1" : "lg:order-2"}`}
+      >
         <h2 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
           {title}
         </h2>

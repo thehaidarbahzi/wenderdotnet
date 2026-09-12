@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Clock, Filter, ScrollText, Activity, RefreshCw, SearchX } from "lucide-react";
+import {
+  Clock,
+  Filter,
+  ScrollText,
+  Activity,
+  RefreshCw,
+  SearchX,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -23,7 +30,10 @@ interface DeviceOption {
   display_name: string;
 }
 
-const eventTypeBadgeMap: Record<string, "info" | "default" | "success" | "warning" | "error"> = {
+const eventTypeBadgeMap: Record<
+  string,
+  "info" | "default" | "success" | "warning" | "error"
+> = {
   message_received: "info",
   message_sent: "default",
   auto_reply_sent: "success",
@@ -89,8 +99,13 @@ export default function LogsPage() {
 
   const stats = useMemo(() => {
     const total = logs.length;
-    const autoReply = logs.filter((l) => l.event_type === "auto_reply_sent").length;
-    const errors = logs.filter((l) => l.event_type === "error" || l.event_type === "session_disconnected").length;
+    const autoReply = logs.filter(
+      (l) => l.event_type === "auto_reply_sent",
+    ).length;
+    const errors = logs.filter(
+      (l) =>
+        l.event_type === "error" || l.event_type === "session_disconnected",
+    ).length;
     return { total, autoReply, errors };
   }, [logs]);
 
@@ -108,7 +123,6 @@ export default function LogsPage() {
         setLogs(data.logs || []);
       }
     } catch {
-
     } finally {
       setLoading(false);
     }
@@ -121,18 +135,14 @@ export default function LogsPage() {
         const data = await res.json();
         setDevices(data.devices || []);
       }
-    } catch {
-
-    }
+    } catch {}
   }, []);
 
   useEffect(() => {
-
     fetchDevices();
   }, [fetchDevices]);
 
   useEffect(() => {
-
     fetchLogs();
   }, [fetchLogs]);
 
@@ -147,11 +157,13 @@ export default function LogsPage() {
       <PageHeader
         eyebrow="Activity · Timeline"
         title="Logs"
-        description="Semua aktivitas tercatat di sini — pesan masuk, balasan otomatis, auto-read, hingga error koneksi. Filter per device atau jenis event untuk debugging."
+        description="Semua aktivitas tercatat di sini: pesan masuk, balasan otomatis, auto-read, hingga error koneksi. Filter per device atau jenis event untuk debugging."
         actions={
           <Button
             variant="secondary"
-            onClick={() => { if (!loading) fetchLogs(); }}
+            onClick={() => {
+              if (!loading) fetchLogs();
+            }}
             disabled={loading}
             loading={loading}
             aria-label="Muat ulang logs"
@@ -191,9 +203,9 @@ export default function LogsPage() {
       )}
 
       {}
-      <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+      <div className="rounded-sm border border-border bg-surface p-4 shadow-sm">
         <div className="flex items-center gap-2 border-b border-border pb-3">
-          <span className="grid h-7 w-7 place-items-center rounded-md bg-surface-subtle border border-border text-text-muted">
+          <span className="grid h-7 w-7 place-items-center rounded-sm bg-surface-subtle border border-border text-text-muted">
             <Filter className="h-3.5 w-3.5" />
           </span>
           <p className="text-sm font-semibold text-text-primary">Filter</p>
@@ -219,14 +231,17 @@ export default function LogsPage() {
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <label htmlFor="device-filter" className="text-xs font-medium uppercase tracking-wider text-text-muted">
+            <label
+              htmlFor="device-filter"
+              className="text-xs font-medium uppercase tracking-wider text-text-muted"
+            >
               Device
             </label>
             <select
               id="device-filter"
               value={selectedDevice}
               onChange={(e) => setSelectedDevice(e.target.value)}
-              className="h-10 w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text-primary shadow-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+              className="h-10 w-full rounded-sm border border-border bg-surface px-3 py-2 text-sm text-text-primary shadow-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
             >
               <option value="">Semua Device</option>
               {devices.map((d) => (
@@ -238,14 +253,17 @@ export default function LogsPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="event-filter" className="text-xs font-medium uppercase tracking-wider text-text-muted">
+            <label
+              htmlFor="event-filter"
+              className="text-xs font-medium uppercase tracking-wider text-text-muted"
+            >
               Event Type
             </label>
             <select
               id="event-filter"
               value={selectedEventType}
               onChange={(e) => setSelectedEventType(e.target.value)}
-              className="h-10 w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text-primary shadow-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+              className="h-10 w-full rounded-sm border border-border bg-surface px-3 py-2 text-sm text-text-primary shadow-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
             >
               <option value="">Semua Event</option>
               {Object.entries(eventTypeLabels).map(([key, label]) => (
@@ -260,27 +278,27 @@ export default function LogsPage() {
 
       {loading ? (
         <div className="relative">
-          <div className="absolute left-[19px] top-0 bottom-0 w-px bg-border hidden sm:block" />
+          <div className="absolute left-4.75 top-0 bottom-0 w-px bg-border hidden sm:block" />
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="relative flex gap-4">
-                <div className="relative z-10 mt-4 hidden h-[10px] w-[10px] shrink-0 items-center justify-center sm:flex">
+                <div className="relative z-10 mt-4 hidden h-2.5 w-2.5 shrink-0 items-center justify-center sm:flex">
                   <Skeleton className="h-2.5 w-2.5 rounded-full" />
                 </div>
-                <div className="flex-1 rounded-xl border border-border bg-surface p-5 shadow-sm">
+                <div className="flex-1 rounded-sm border border-border bg-surface p-5 shadow-sm">
                   <div className="flex flex-wrap items-center gap-2">
                     <Skeleton className="h-3 w-24" />
                     <Skeleton className="h-5 w-28 rounded-full" />
                   </div>
                   <Skeleton className="mt-3 h-4 w-64" />
-                  <Skeleton className="mt-2 h-16 w-full rounded-lg" />
+                  <Skeleton className="mt-2 h-16 w-full rounded-sm" />
                 </div>
               </div>
             ))}
           </div>
         </div>
       ) : logs.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-surface/60 p-1">
+        <div className="rounded-sm border border-dashed border-border bg-surface/60 p-1">
           <EmptyState
             title={hasActiveFilter ? "Tidak ada hasil" : "Belum ada logs"}
             description={
@@ -288,10 +306,22 @@ export default function LogsPage() {
                 ? "Tidak ada log yang cocok dengan filter yang dipilih. Coba ubah device atau jenis event."
                 : "Aktivitas akan muncul di sini setelah device mulai bekerja. Pastikan device sudah connected dan rules aktif."
             }
-            icon={hasActiveFilter ? <SearchX className="h-5 w-5" /> : <ScrollText className="h-5 w-5" />}
+            icon={
+              hasActiveFilter ? (
+                <SearchX className="h-5 w-5" />
+              ) : (
+                <ScrollText className="h-5 w-5" />
+              )
+            }
             action={
               hasActiveFilter ? (
-                <Button variant="secondary" onClick={() => { setSelectedDevice(""); setSelectedEventType(""); }}>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setSelectedDevice("");
+                    setSelectedEventType("");
+                  }}
+                >
                   Hapus filter
                 </Button>
               ) : undefined
@@ -303,13 +333,18 @@ export default function LogsPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold tracking-tight text-text-primary">
-              Timeline <span className="font-normal text-text-muted">· {logs.length} events</span>
+              Timeline{" "}
+              <span className="font-normal text-text-muted">
+                · {logs.length} events
+              </span>
             </h2>
-            <p className="hidden text-xs text-text-muted sm:block">Terbaru di atas · waktu lokal</p>
+            <p className="hidden text-xs text-text-muted sm:block">
+              Terbaru di atas · waktu lokal
+            </p>
           </div>
 
           <div className="relative">
-            <div className="absolute left-[19px] top-2 bottom-2 hidden w-px bg-gradient-to-b from-border via-border to-transparent sm:block" />
+            <div className="absolute left-4.75 top-2 bottom-2 hidden w-px bg-linear-to-b from-border via-border to-transparent sm:block" />
             <div className="space-y-3">
               {logs.map((log) => (
                 <div key={log.id} className="relative flex gap-4">
@@ -318,22 +353,41 @@ export default function LogsPage() {
                       className={`block h-3 w-3 rounded-full border-2 shadow-xs ${dotColorMap[log.event_type] || "bg-surface-subtle border-border"}`}
                       aria-hidden
                     />
-                    <span className={`absolute h-6 w-6 rounded-full opacity-20 ${dotColorMap[log.event_type]?.split(" ")[0] || "bg-border"}`} aria-hidden style={{ filter: "blur(6px)" }} />
+                    <span
+                      className={`absolute h-6 w-6 rounded-full opacity-20 ${dotColorMap[log.event_type]?.split(" ")[0] || "bg-border"}`}
+                      aria-hidden
+                      style={{ filter: "blur(6px)" }}
+                    />
                   </div>
-                  <div className="group flex-1 rounded-xl border border-border bg-surface p-4 shadow-sm transition-all hover:shadow-md hover:border-primary/15 sm:p-5">
+                  <div className="group flex-1 rounded-sm border border-border bg-surface p-4 shadow-sm transition-all hover:shadow-md hover:border-primary/15 sm:p-5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <time dateTime={log.created_at} className="inline-flex items-center gap-1.5 text-xs text-text-muted" title={formatTime(log.created_at)}>
+                      <time
+                        dateTime={log.created_at}
+                        className="inline-flex items-center gap-1.5 text-xs text-text-muted"
+                        title={formatTime(log.created_at)}
+                      >
                         <Clock className="h-3 w-3" />
                         {timeAgo(log.created_at)}
-                        <span className="hidden text-text-muted/60 sm:inline">· {formatTime(log.created_at)}</span>
+                        <span className="hidden text-text-muted/60 sm:inline">
+                          · {formatTime(log.created_at)}
+                        </span>
                       </time>
-                      <span className="hidden h-1 w-1 rounded-full bg-border sm:block" aria-hidden />
-                      <Badge variant={getBadgeVariant(log.event_type)}>{eventTypeLabels[log.event_type] || log.event_type}</Badge>
-                      <span className="ml-auto hidden font-mono text-[11px] text-text-muted sm:inline">{log.device_key.slice(0, 8)}…</span>
+                      <span
+                        className="hidden h-1 w-1 rounded-full bg-border sm:block"
+                        aria-hidden
+                      />
+                      <Badge variant={getBadgeVariant(log.event_type)}>
+                        {eventTypeLabels[log.event_type] || log.event_type}
+                      </Badge>
+                      <span className="ml-auto hidden font-mono text-[11px] text-text-muted sm:inline">
+                        {log.device_key.slice(0, 8)}…
+                      </span>
                     </div>
-                    <p className="mt-2 text-sm leading-relaxed text-text-primary">{log.description}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-text-primary">
+                      {log.description}
+                    </p>
                     {log.body && (
-                      <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg border border-border bg-surface-subtle p-3 text-xs leading-relaxed text-text-secondary">
+                      <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-sm border border-border bg-surface-subtle p-3 text-xs leading-relaxed text-text-secondary">
                         {log.body}
                       </pre>
                     )}

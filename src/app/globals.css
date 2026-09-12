@@ -240,3 +240,24 @@ html {
   background: linear-gradient(to bottom, var(--primary), var(--primary-hover));
   border-radius: 2px;
 }
+
+/* Global button cursor — hover pointer & clicked feedback untuk semua button */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"]:disabled {
+    cursor: not-allowed;
+  }
+}
+
+/* Clicked state: cursor tetap pointer + subtle shrink untuk feedback */
+@media (prefers-reduced-motion: no-preference) {
+  button:active:not(:disabled),
+  [role="button"]:active:not(:disabled) {
+    cursor: pointer;
+    transform: scale(0.97);
+  }
+}

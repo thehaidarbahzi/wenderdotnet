@@ -21,7 +21,7 @@ export function StatCard({ label, value, hint, icon, tone = "default", className
   return (
     <div
       className={cn(
-        "group relative rounded-xl border border-border bg-surface p-5 shadow-sm transition-all hover:shadow-md hover:border-primary/20",
+        "group relative rounded-sm border border-border bg-surface p-5 shadow-sm transition-all hover:shadow-md hover:border-primary/20",
         className
       )}
     >
@@ -38,7 +38,7 @@ export function StatCard({ label, value, hint, icon, tone = "default", className
         {icon && (
           <span
             className={cn(
-              "grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-transparent transition-colors",
+              "grid h-10 w-10 shrink-0 place-items-center rounded-sm border border-transparent transition-colors",
               toneIcon[tone]
             )}
             aria-hidden

@@ -5,8 +5,8 @@ export function DeviceStackVisual() {
   return (
     <div className="relative mx-auto w-full max-w-sm overflow-hidden py-6">
       {}
-      <div className="absolute left-0 top-0 w-44 rotate-[-4deg] rounded-[var(--radius-lg)] border border-border bg-surface p-4 shadow-md">
-        <div className="grid h-28 place-items-center rounded-[var(--radius-md)] border border-dashed border-border bg-surface-subtle">
+      <div className="absolute left-0 top-0 w-44 rotate-[-4deg] rounded-sm border border-border bg-surface p-4 shadow-md">
+        <div className="grid h-28 place-items-center rounded-sm border border-dashed border-border bg-surface-subtle">
           <QrCode className="h-12 w-12 text-text-muted" strokeWidth={1.5} />
         </div>
         <p className="mt-3 text-center text-xs font-medium text-text-secondary">
@@ -15,9 +15,9 @@ export function DeviceStackVisual() {
       </div>
 
       {}
-      <div className="relative ml-auto w-64 translate-y-10 rounded-[var(--radius-lg)] border border-border bg-surface p-4 shadow-lg">
+      <div className="relative ml-auto w-64 translate-y-10 rounded-sm border border-border bg-surface p-4 shadow-lg">
         <div className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-[var(--radius-md)] bg-primary-subtle text-primary">
+          <span className="grid h-8 w-8 place-items-center rounded-sm bg-primary-subtle text-primary">
             <Smartphone className="h-4 w-4" />
           </span>
           <div className="min-w-0">
@@ -40,9 +40,9 @@ export function DeviceStackVisual() {
 
 export function AutoReplyVisual() {
   return (
-    <div className="mx-auto w-full max-w-sm space-y-3 rounded-[var(--radius-xl)] border border-border bg-surface p-5 shadow-md">
+    <div className="mx-auto w-full max-w-sm space-y-3 rounded-sm border border-border bg-surface p-5 shadow-md">
       <div className="flex items-start">
-        <div className="max-w-[85%] rounded-[var(--radius-lg)] rounded-bl-sm bg-surface-subtle px-3.5 py-2.5">
+        <div className="max-w-[85%] rounded-sm rounded-bl-sm bg-surface-subtle px-3.5 py-2.5">
           <p className="text-sm text-text-primary">
             Pagi, stok ukuran L{" "}
             <mark className="rounded bg-warning/15 px-1 text-warning-strong">
@@ -60,7 +60,7 @@ export function AutoReplyVisual() {
       </div>
 
       <div className="flex items-end justify-end">
-        <div className="max-w-[85%] rounded-[var(--radius-lg)] rounded-br-sm bg-primary px-3.5 py-2.5">
+        <div className="max-w-[85%] rounded-sm rounded-br-sm bg-primary px-3.5 py-2.5">
           <p className="text-sm text-white dark:text-text-primary">
             Selamat pagi! Stok ukuran L tersedia. Bisa langsung order ya.
           </p>
@@ -101,7 +101,7 @@ export function LogsVisual() {
             aria-hidden
             className="absolute -left-5 top-4 block h-2.5 w-2.5 rounded-full border-2 border-border bg-surface"
           />
-          <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-3.5 shadow-sm">
+          <div className="rounded-sm border border-border bg-surface p-3.5 shadow-sm">
             <div className="flex items-center justify-between gap-2">
               <Badge variant={row.variant}>{row.label}</Badge>
               <span className="font-mono text-xs text-text-muted">

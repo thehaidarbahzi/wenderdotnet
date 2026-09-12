@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   const webhookSecret = process.env.WHATSAPP_WEBHOOK_SECRET;
 
   if (!webhookSecret) {
-    console.error("[webhook] WHATSAPP_WEBHOOK_SECRET not configured — rejecting");
+    console.error("[webhook] WHATSAPP_WEBHOOK_SECRET not configured: rejecting");
     return NextResponse.json({ error: "Webhook secret not configured" }, { status: 500 });
   }
 

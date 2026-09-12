@@ -23,9 +23,9 @@ const variantStyles: Record<Variant, string> = {
 
 const sizeStyles: Record<Size, string> = {
 
-  sm: "h-9 px-3 text-sm rounded-[var(--radius-sm)]",
-  md: "h-10 px-4 text-sm rounded-[var(--radius-md)]",
-  lg: "h-11 px-6 text-base rounded-[var(--radius-md)]",
+  sm: "h-9 px-3 text-sm rounded-sm",
+  md: "h-10 px-4 text-sm rounded-sm",
+  lg: "h-11 px-6 text-base rounded-sm",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -46,9 +46,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || loading}
         className={cn(
-          "inline-flex items-center justify-center gap-2 font-medium transition-colors",
+          "inline-flex items-center justify-center gap-2 font-medium transition-colors cursor-pointer",
+          "hover:cursor-pointer active:cursor-pointer active:scale-[0.98]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-          "disabled:pointer-events-none disabled:opacity-50",
+          "disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50",
           variantStyles[variant],
           sizeStyles[size],
           className

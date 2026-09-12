@@ -305,12 +305,14 @@ Bot (your server) → `POST https://<your-app>.vercel.app/api/webhook/gowa` → 
 - Supabase Google provider: <https://supabase.com/docs/guides/auth/social-login/auth-google>
 - Supabase migrations: <https://supabase.com/docs/guides/migrations>
 
-### Version matrix (as written)
+### Version matrix (11 Sep 2026, dari `package.json` dan `compose.yaml`)
 
 | Dependency | Version | Notes |
 | --- | --- | --- |
-| `next` | 16.3.0 | App Router; middleware is `src/proxy.ts` in this codebase |
-| `react` | 19.2.8 | |
-| `@supabase/supabase-js` | ^2.112.3 | Keep in lockstep with `@supabase/ssr` |
-| `@supabase/ssr` | ^0.12.4 | Cookie-based SSR clients |
-| GOWA image | `v9.2.2` (2026-08-23) | Pinned in `compose.yaml` |
+| `next` | 16.3.4 | App Router; middleware `src/proxy.ts`, `reactCompiler: true` |
+| `react` / `react-dom` | 19.2.8 | |
+| `@supabase/supabase-js` | ^2.116.0 | Lockstep dengan `@supabase/ssr` |
+| `@supabase/ssr` | ^0.12.7 | Cookie SSR, `createClient` server/client terpisah |
+| `tailwindcss` | 4.3.3 + `@tailwindcss/postcss` | Tokens di `src/app/globals.css` via `@theme inline`, radius seragam `rounded-sm` (6px), button global `cursor-pointer` + `active:scale` |
+| `zod` | ^4.5.4 | Validasi (dipakai newsletter, disiapkan untuk forms lain) |
+| GOWA image | `v9.2.2` (2026-08-23) | Pinned `compose.yaml` `docker.io/aldinokemal2104/go-whatsapp-web-multidevice` |

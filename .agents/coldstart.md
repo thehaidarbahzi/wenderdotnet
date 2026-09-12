@@ -92,67 +92,73 @@ Web app untuk **mengatur dan mengonfigurasi bot WhatsApp** — konsep menyerupai
 
 ### 2.8 Project Structure
 
-> **Status:** Sudah **terimplementasi penuh** di codebase.
+> **Status:** Sudah **terimplementasi penuh** di codebase (11 Sep 2026).
 
-- using nextjs app router (Next.js 16.3.0, React 19, TypeScript)
-- **Styling:** Tailwind CSS v4 (tanpa `tailwind.config.*` — fully CSS-driven via `globals.css`)
+- using nextjs app router (Next.js 16.3.4, React 19.2, TypeScript 7)
+- **Styling:** Tailwind CSS v4 (tanpa `tailwind.config.*` — fully CSS-driven via `globals.css`, tokens `@theme inline`, radius seragam `rounded-sm` 6px, global `button{cursor:pointer}` + `active:scale-97`)
 - **UI Library:** lucide-react (ikon), sonner (toast), clsx + tailwind-merge (class utility), next-themes (dark/light)
-- 1 landing page consisting of: Hero CTA, short introduction of this project, 3 points of what is the main feature of this project not using card but with the left image right text of the title feature, short description of the feature and cta for learn more and each is reversed so first image is left and text right, second is reversed then last is reversed again, section of what the creator say about this project like kata sambutan from creator, section of subscribe to newsletter, then footer (navbar dan footer taruh di `(marketing)` layout — root layout hanya `html/body` + font)
-- 1 page untuk login/register nanti di buat layout full gambar di kiri form di kanan, route `/auth` (tab "Masuk" / "Daftar", tanpa navbar)
-- **Server actions tidak pernah didefinisikan di file frontend.** Semua fungsi `"use server"` (mutasi, panggilan ke bot, tulis DB) ditaruh di folder khusus, mis. `src/server/actions/*` (dibagi per domain: `devices.ts`, `rules.ts`, `logs.ts`, `auth.ts`, `newsletter.ts`). Frontend hanya memanggil method dari sana. Konsekuensi: file UI tidak mengandung `"use server"` sama sekali.
+- 1 landing page (`src/app/(marketing)/page.tsx`): Hero CTA, 3 langkah cara pakai, 3 fitur `SectionFeature` alternating dengan visual `Image` SVG terpusat (`relative flex isolate` + light `absolute left-1/2 -translate blur-2xl rounded-sm bg-primary/10`, image `max-w-[300px] rounded-sm shadow-lg`, mobile `order-1` visual di atas `order-2` teks `items-center text-center lg:items-start lg:text-left`, gap `8 sm:gap-12 lg:gap-16`), quote kreator, newsletter, footer (navbar dan footer di `(marketing)` layout — root layout hanya `html/body` + font + metadata `title: "%s: wenderdotnet"` + JSON-LD)
+- 1 page untuk login/register layout split-screen brand panel di kiri form di kanan, route `/auth` (tab "Masuk" / "Daftar", tanpa navbar), SEO `metadataBase` dari `NEXT_PUBLIC_SITE_URL`
+- **Server actions** sebagian di `src/server/actions/*` (`newsletter.ts` aktif), sebagian bermigrasi ke route handlers `src/app/api/*` (devices, automations, groups, login). Prinsip tetap: file UI tidak mengandung `"use server"`.
 
-### 2.9 Struktur Folder (Aktual)
+### 2.9 Struktur Folder (Aktual, 11 Sep 2026)
 
 ```
 src/
 ├── app/
-│   ├── globals.css              # Design tokens + Tailwind v4 config
-│   ├── layout.tsx               # Root: Inter font, ThemeProvider, Toaster
+│   ├── globals.css              # tokens warna/shadow/radius (--radius-sm 6px seragam) + @theme inline + cursor global
+│   ├── layout.tsx               # Root: Inter, ThemeProvider, Toaster, metadata "%s: wenderdotnet", viewport, JSON-LD
+│   ├── sitemap.ts / robots.ts / icon.svg / not-found.tsx
 │   ├── (marketing)/
-│   │   ├── layout.tsx           # Navbar + Footer wrapper
-│   │   └── page.tsx             # Landing page
+│   │   ├── layout.tsx           # Navbar + Footer
+│   │   ├── page.tsx             # Landing: hero + SectionFeature (centered SVG+light, rounded-sm)
+│   │   ├── privacy/page.tsx     # TOC 270px truncate, section border-t pt-10, rounded-sm, antislop copy
+│   │   └── terms/page.tsx       # sama, 09 section bernomor
 │   ├── (auth)/
 │   │   ├── layout.tsx           # Split-screen brand panel
-│   │   └── auth/page.tsx        # Login/Register form
+│   │   └── auth/page.tsx        # Login/Register tabs
 │   ├── (app)/
-│   │   ├── layout.tsx           # Topbar wrapper
-│   │   ├── devices/page.tsx     # Device management
-│   │   ├── rules/page.tsx       # Rule CRUD
-│   │   └── logs/page.tsx        # Activity log viewer
+│   │   ├── layout.tsx           # Topbar + blur orbs
+│   │   ├── devices/page.tsx     # list + stats + QR/Kode modal + 5s polling
+│   │   ├── devices/[deviceId]/page.tsx # Overview/Automasi (+ Webhook UI) + group picker
+│   │   └── logs/page.tsx        # timeline + filters
 │   └── api/
-│       ├── devices/             # CRUD + QR + status + logout
-│       ├── rules/               # CRUD
-│       ├── logs/                # Filtered list
-│       └── webhook/gowa/        # Inbound webhook (HMAC verified)
+│       ├── devices/route.ts
+│       ├── devices/[deviceId]/route.ts + /status + /login + /login/code + /groups + /logout
+│       ├── devices/[deviceId]/automations/route.ts + /[automationId]/route.ts
+│       ├── logs/route.ts
+│       ├── webhook/gowa/route.ts
+│       └── auth/callback/route.ts
 ├── components/
-│   ├── ui/                      # Button, Input, Badge, Modal, Toggle, EmptyState, Skeleton
-│   ├── marketing/               # HeroPreview, FeatureVisuals, NewsletterForm
-│   ├── navbar.tsx, topbar.tsx, footer.tsx
-│   ├── logo.tsx                 # WMark, LogoMark, Wordmark
-│   ├── theme-provider.tsx, theme-toggle.tsx
-├── lib/
-│   ├── cn.ts                    # clsx + tailwind-merge
-│   ├── gowa.ts                  # HTTP client for GOWA bot API
-│   └── supabase/                # client.ts, server.ts, middleware.ts
-├── server/actions/              # auth.ts, devices.ts, rules.ts, logs.ts, newsletter.ts
-├── types/index.ts               # TypeScript interfaces
-└── proxy.ts                     # Middleware entry (route protection)
+│   ├── ui/                      # Button (cursor-pointer active:scale), Input, Badge, Modal, Toggle, Skeleton, EmptyState
+│   ├── marketing/               # HeroPreview, NewsletterForm (FeatureVisuals ada tapi tidak dipakai, pakai Image SVG)
+│   ├── navbar.tsx, topbar.tsx, footer.tsx, logo.tsx, theme-toggle.tsx, theme-provider.tsx
+│   └── dashboard/               # StatCard, PageHeader
+├── lib/                         # cn.ts, gowa.ts, supabase/{client,server,middleware}
+├── server/actions/              # newsletter.ts (sisa), devices/rules/logs sudah di api
+├── types/index.ts
+└── proxy.ts                     # middleware (matcher _next/static etc)
+public/
+├── illustrations/               # device-stack.svg, auto-reply.svg, logs-timeline.svg, hero-chat.svg
+└── opengraph.png / icon.svg
+supabase/migrations/ 001_initial_schema, 002_device_isolation, 003_grants, 004_per_device_automations
 ```
 
 ---
 
 ## 2.10 Konvensi Kode
 
-> **Status:** Sudah **terimplementasi penuh** di codebase.
+> **Status:** Sudah **terimplementasi penuh** di codebase (11 Sep 2026).
 
-- **Server actions:** hanya di `src/server/actions/` (`"use server"`); file frontend (komponen/page) tidak boleh berisi `"use server"` — cukup import method.
-- **Bot proxy:** akses ke `BOT_API_URL` hanya lewat `src/lib/gowa.ts` (fetch + Basic Auth); dipanggil dari server action, bukan langsung dari browser.
-- **Supabase client:** server-only (service key) di `src/lib/supabase/`; jangan pernah pakai service key di komponen client.
-- **UI Components:** semua di `src/components/ui/` dengan named exports; menggunakan `cn()` utility untuk class merging.
-- **API Routes:** semua di `src/app/api/` — RESTful pattern (GET list, POST create, PUT update, DELETE remove).
-- **Middleware:** entry point di `src/proxy.ts` (bukan `middleware.ts`); melindungi route `/devices`, `/rules`, `/logs`.
-- **Types:** semua TypeScript interfaces di `src/types/index.ts`.
-- **React Compiler:** enabled via `babel-plugin-react-compiler` + `reactCompiler: true` di `next.config.ts`.
+- **Server actions / API:** `newsletter` masih di `src/server/actions/` (`"use server"`), devices/automations/groups/login/logout sudah di `src/app/api/` (proxy ke `BOT_API_URL`). Frontend tidak boleh punya `"use server"`.
+- **Bot proxy:** akses ke `BOT_API_URL` hanya lewat `src/lib/gowa.ts` (fetch + Basic Auth, header `X-Device-Id` untuk groups).
+- **Supabase client:** server-only `src/lib/supabase/server.ts` vs browser `client.ts`; jangan impor server di client component.
+- **UI:** `src/components/ui/` named exports + `cn()`. Radius seragam `rounded-sm` (hanya `rounded-full` untuk orbs/dot), Button `cursor-pointer active:scale-97` global di `globals.css`, legal TOC `270px truncate whitespace-nowrap`, landing `SectionFeature` `max-w-[360px]` terpusat.
+- **API Routes:** RESTful `GET/POST/PUT/DELETE` di `src/app/api/`.
+- **Middleware:** `src/proxy.ts` (matcher `_next/static` etc) + `lib/supabase/middleware.ts` untuk `/devices` `/logs` (`/rules` sudah dihapus di 004).
+- **Types:** `src/types/index.ts`.
+- **React Compiler:** `babel-plugin-react-compiler` + `reactCompiler: true` di `next.config.ts`.
+- **SEO:** `src/app/layout.tsx` `metadataBase` + `title template "%s: wenderdotnet"` + `sitemap.ts`/`robots.ts` + `icon.svg`.
 
 ---
 
@@ -225,25 +231,24 @@ src/
 
 ### 5.1 Elemen Global
 
-- **Root layout (`src/app/layout.tsx`):** `html/body` + font **Inter** via `next/font/google` + `ThemeProvider` (next-themes) + `Toaster` (sonner). Route groups:
-  - `(marketing)` → landing `(`/`)` — navbar + footer
-  - `(auth)` → `/auth` — split layout, tanpa navbar
-  - `(app)` → dashboard `/devices`, `/rules`, `/logs` — topbar app
-- **Primitives (`src/components/ui/`):** Button (primary/secondary/danger/ghost), Input (label + error), Badge (success/warning/error/info/whatsapp/default), Modal (escape + backdrop close), Toggle (`role="switch"`), EmptyState, Skeleton, Toast (sonner).
-- **Layout components:** Navbar (sticky, mobile hamburger), Topbar (nav links + logout), Footer, ThemeToggle (sun/moon dengan CSS transition).
+- **Root layout (`src/app/layout.tsx`):** `html lang="id"` + `Inter` via `next/font/google` (`--font-inter` → `--font-sans`) + `ThemeProvider` (`attribute="class" defaultTheme="system"`) + `Toaster` + `metadata` (`metadataBase NEXT_PUBLIC_SITE_URL`, `title default/template "%s: wenderdotnet"`, `openGraph/twitter` `/opengraph.png`, `robots`, `icons /icon.svg`, `verification google`, JSON-LD `SoftwareApplication`) + `viewport` themeColor. Route groups:
+  - `(marketing)` → landing `/` + `/privacy` + `/terms` — Navbar + Footer
+  - `(auth)` → `/auth` — split brand panel, tanpa navbar, redirect ke `/devices` jika sudah login
+  - `(app)` → `/devices`, `/devices/[deviceId]`, `/logs` — Topbar + blur orbs
+- **Primitives (`src/components/ui/`):** Button (`primary/secondary/danger/ghost`, `sm/md/lg`, `rounded-sm`, `cursor-pointer active:scale-[0.98]`), Input, Badge, Modal (`rounded-sm animate-modal`), Toggle (`role="switch" cursor-pointer`), EmptyState, Skeleton, Toast `sonner`.
+- **Layout components:** Navbar (sticky, mobile hamburger, `rounded-sm`), Topbar (nav `Devices/Logs`, `rounded-sm`, logout `cursor-pointer`, theme toggle), Footer, ThemeToggle (sun/moon transition `grid h-9 w-9 rounded-sm cursor-pointer`).
 
 ### 5.2 Landing Page (`/`) — `src/app/(marketing)/page.tsx`
 
-1. **Navbar** (logo WMark → `/devices`, nav "Fitur" → `/#fitur`, "Cara pakai" → `/#cara-pakai`, ThemeToggle, CTA "Masuk" → `/auth`)
-2. **Hero:** headline "Kelola bot WhatsApp Anda dari satu dashboard" + subjudul + 2 CTA ("Buat akun gratis" → `/auth`, "Lihat cara pakai" → `#cara-pakai`) + `HeroPreview` (static mockup Devices screen)
-3. **How it works (`#cara-pakai`):** 3 langkah (Masuk & tambah device → Scan QR → Buat aturan), numbered steps dengan border-kiri primary
-4. **Features (`#fitur`):** 3 section alternating layout (`SectionFeature` component):
-   - "Semua nomor di satu tempat" — `DeviceStackVisual` (overlapping cards)
-   - "Auto-reply yang bisa dikontrol" — `AutoReplyVisual` (chat bubble mockup)
-   - "Setiap aktivitas tercatat" — `LogsVisual` (timeline mockup)
-5. **Creator statement (`#tentang`):** Quote block dengan avatar "W" + "Tim wenderdotnet"
-6. **Newsletter (`#newsletter`):** `NewsletterForm` → server action `subscribeNewsletter()` → tabel `newsletters`
-7. **Footer** — brand, nav links, copyright
+1. **Navbar** (`src/components/navbar.tsx`): logo WMark → `/devices`, nav "Fitur" `/#fitur` + "Cara pakai" `/#cara-pakai`, ThemeToggle `rounded-sm cursor-pointer`, CTA "Masuk" → `/auth`, mobile hamburger `rounded-sm`.
+2. **Hero** (`overflow-hidden` + blur orbs `rounded-full`): headline "Kelola bot WhatsApp Anda dari satu dashboard" (`text-balance 4xl/5xl/6xl`) + sub + 2 CTA (`Button size="lg" rounded-sm`) + `HeroPreview` `animate-scale`.
+3. **How it works (`#cara-pakai` `border-t bg-surface-subtle/50` + dot pattern):** 3 langkah `Masuk & tambah device → Scan QR → Buat aturan`, `ScrollReveal delay 100`, `group rounded-sm border bg-surface p-6 hover:shadow-md` dengan ikon `h-12 w-12 rounded-sm bg-primary/10`.
+4. **Features (`#fitur` `border-t`):** `flex flex-col gap-20 sm:gap-28`, `SectionFeature` `grid items-center gap-8 sm:gap-12 lg:grid-cols-2`:
+   - Visual `flex w-full max-w-[360px] items-center justify-center` → inner `relative flex isolate` + light `absolute left-1/2 top-1/2 -translate h-[88%] w-[88%] rounded-sm blur-2xl bg-primary/10` + `Image` `device-stack.svg / auto-reply.svg / logs-timeline.svg` `max-w-[300px] rounded-sm shadow-lg`, mobile `order-1` visual di atas `order-2` teks `items-center text-center lg:items-start lg:text-left`, `reversed` untuk alternating desktop.
+   - Teks `h2 text-2xl sm:text-3xl + p leading-relaxed + Link CTA ArrowRight`.
+5. **Creator (`#tentang` `bg-surface-subtle/50` + dot-pattern):** `figure max-w-2xl text-center blockquote text-lg`.
+6. **Newsletter (`#newsletter` `border-t overflow-hidden` + blur orbs):** `NewsletterForm` `max-w-sm` `Input + Button rounded-sm` → `subscribeNewsletter()` → `newsletters`, `ScrollReveal`.
+7. **Footer** (`src/components/footer.tsx`): brand, nav, copyright, `rounded-sm`.
 
 ### 5.3 `/auth` (login & register — satu halaman) — `src/app/(auth)/auth/page.tsx`
 
@@ -268,16 +273,16 @@ Layout: **kiri = brand panel** (bg-primary gradient, headline, capabilities list
 
 ### 5.4 `/devices` (Dashboard) — `src/app/(app)/devices/page.tsx`
 
-1. Topbar global (Devices | Logs, Rules dihapus di 004)
-2. Heading "Devices" + subjudul "Kelola device WhatsApp Anda" + stats (Total/Terhubung/Butuh perhatian)
-3. Tombol primary "+ Tambah Device"
-4. Daftar kartu device (terbaru di atas), tiap kartu:
-   - Status badge (Connected/Connecting/Disconnected) + JID
-   - Nama device (bold, link ke `/devices/[deviceId]`) + device ID (monospace) + `Detail` link
-   - Tombol aksi: Hubungkan (Plug, tab QR/Kode, `loading+disabled` guard) / Disconnect (Unplug, `loading+disabled`) + Delete (Trash2, `loading+disabled`)
-   - Auto-refresh 5s per-device (visibility-aware, 1 call `GET /api/devices`, bukan N+1), auto-close QR modal ketika `logged_in`
-5. Empty state: QrCode icon + "Belum ada device" + CTA tambah
-6. Loading state: 3 skeleton cards
+1. Topbar global (`Devices | Logs`, `Rules` dihapus 004, Topbar `rounded-sm`, logout `cursor-pointer`)
+2. `PageHeader` eyebrow `Workspace · WhatsApp` + heading `Devices` + desc + `Button` `Tambah Device` `rounded-sm`
+3. Stats `StatGrid` 3 `StatCard` `rounded-sm border bg-surface p-5 shadow-sm` (`Smartphone/Signal/WifiOff`, `tone default/success/warning`, `loading` skeleton `rounded-sm`)
+4. List header `Daftar device · N total` + `Refresh` `rounded-sm` `RefreshCw animate-spin`, grid `gap-3` kartu `rounded-sm border bg-surface p-5 hover:shadow-md`:
+   - Ikon `h-11 w-11 rounded-sm border bg-surface-subtle`
+   - Nama `link text-[15px] font-semibold hover:text-primary` + badge + JID `font-mono text-xs` + hint + `Button Detail & Automasi rounded-sm border-primary/20 bg-primary/5`
+   - Aksi `Hubungkan`/`Disconnect` `Button secondary sm` + `Delete ghost h-9 w-9 p-0 rounded-sm` semua `loading+disabled` + `cursor-pointer`
+   - Polling 5s per-device (`GET /api/devices` 1 call, `document.visibilityState`, `pageshow/focus`) + interval 3s untuk `connecting` + `notifiedRef` anti double toast, auto-close QR modal saat `logged_in`
+5. Empty `rounded-sm border-dashed bg-surface/60` + `EmptyState` + Tips `font-mono uppercase tracking-widest`
+6. Loading 3 skeleton `rounded-sm p-5`
 
 **Modal "Tambah Device":** Heading → input "Nama Device" → tombol "Buat & Hubungkan" (`loading+disabled`) + "Batal".
 
@@ -285,28 +290,25 @@ Layout: **kiri = brand panel** (bg-primary gradient, headline, capabilities list
 
 **Modal "Hapus Device":** Konfirmasi + tombol "Hapus permanen" (`loading+disabled` anti double-click).
 
-### 5.4b `/devices/[deviceId]` (Detail Device) — `src/app/(app)/devices/[deviceId]/page.tsx` (baru di 004)
+### 5.4b `/devices/[deviceId]` (Detail Device) — `src/app/(app)/devices/[deviceId]/page.tsx` (004, 11 Sep 2026)
 
-1. Header: Back link + nama + badge + JID + actions Hubungkan/Disconnect
-2. Tabs `Overview | Webhook | Automasi` (`role="tablist"`, `aria-selected`)
-3. **Overview:** Status (Signal/WiFiOff), Device ID, JID, auto-refresh 5s
-4. **Automasi:** Form automasi per-device (hapus Webhook tab — tidak dipakai, automasi tetap jalan via global webhook `POST /api/webhook/gowa`)
-5. **Automasi:** List per-device (`GET /api/devices/:id/automations`), card: nama + `trigger_category` (prefix/contains/exact/regex) + pattern→reply + badges `target_type/target_jid`, `is_reply`/`mentions`/`duration` + `Toggle enabled` (`loading` per row) + `Edit`/`Delete` (`loading+disabled`). **Tambah/Edit Modal:** Nama, Kategori (select), Tipe Target (Semua/Group/Private) → jika Group tampil **Group Picker** (`GET /api/devices/:id/groups` via `X-Device-Id`, cached 30s, limit 500 `openapi.yaml:1074`, search debounce, virtual 100, multi-select → **duplicate per grup** 1 automasi per `target_jid`), Pola, Balasan, checkbox `Reply`/`Forwarded`, Mentions (`@everyone,628xxx` per `openapi.yaml:1244`), Duration (0/86400/604800/7776000). Simpan `POST /api/devices/:id/automations` (array `target_jids` → N rows) atau `PUT /:id/:automationId`, semua `loading+disabled`.
+1. Header: back `← Kembali` + kartu header `rounded-sm border p-5` nama + badge `Connected/Connecting` + JID `font-mono` + aksi `Hubungkan (Plug) / Disconnect (Unplug)` `Button rounded-sm loading+disabled` + `h-12 w-12 rounded-sm` ikon
+2. Tabs `Overview | Webhook | Automasi` `role="tab" border-b-2 -mb-px aria-selected` `rounded-sm` (Webhook UI masih ada: `webhook_url/secret/events/skip_verify` via `src/lib/gowa.ts` `PATCH /devices/:id/webhook` + `Test Kirim Dummy`)
+3. **Overview:** 3 kartu `rounded-sm border p-4` Status/Device ID/JID, `rounded` `bg-surface-subtle` code block, auto-refresh 5s + 3s untuk `connecting`
+4. **Automasi:** `Stat: Automasi untuk device ini` + `Tambah` `Button`. List `GET /automations` kartu `rounded-sm border p-4`: nama + `trigger_category` + `pattern→reply` + pills `rounded-full` `target_type/target_jid` `is_reply/mentions/duration` + `Toggle enabled` `h-6 w-11 rounded-full` `cursor-pointer` + `Edit/Delete ghost h-8 w-8 p-0 rounded-sm`. **Tambah/Edit Modal** (`Modal rounded-sm animate-modal`): Nama, Kategori `select h-10 rounded-sm` (Kata depan/contains/exact/regex), Target `Semua/Group/Private` → Group Picker `GET /groups` `X-Device-Id` cached 30s limit 500 `openapi.yaml:1074` search debounce virtual 100 multi-select `rounded-sm border p-3`, Balasan `textarea min-h-[100px] rounded-sm`, `Reply/Forwarded` checkbox, Mentions `@everyone,628xxx` `openapi.yaml:1244`, Duration `select rounded-sm` (0/86400/604800/7776000). Simpan `POST /automations` (array `target_jids` → N rows duplicate per grup) / `PUT /:id/:automationId`.
+5. **Connect Modal** `Hubungkan WhatsApp` `rounded-sm`: `grid grid-cols-2 gap-1 rounded-sm bg-surface-subtle p-1` tabs `QR/Kode` `rounded-sm`, QR `qr_link` `h-64 w-64 rounded-sm border bg-white p-2`, Kode `Input Nomor HP` + `Dapatkan Kode` `POST /login/code` → `pair_code` `font-mono text-3xl tracking-[0.2em]` + `Copy/Check h-8 w-8 rounded-sm`.
 
 > **Rules global dihapus TOTAL** di `004_per_device_automations.sql` (DROP `rules`/`device_rules`), nav `Rules` dihapus dari `src/components/topbar.tsx:12`.
 
 ### 5.6 `/logs` (aktivitas bot) — `src/app/(app)/logs/page.tsx`
 
-1. Topbar global
-2. Header: heading "Logs" + subjudul
-3. Filter bar: dropdown Device + dropdown Event Type (7 tipe)
-4. Timeline aktivitas (terbaru di atas) dengan vertical line + dot indicator:
-   - Timestamp relatif ("Baru saja", "5 menit yang lalu", dst.)
-   - Event badge (Message Received, Message Sent, Auto Reply Sent, Auto Read, Session Connected, Session Disconnected, Error)
-   - Deskripsi (dari API)
-   - Body/isi pesan (jika ada, dalam pre/code block)
-5. Empty state: "Belum ada logs"
-6. Loading state: 5 skeleton cards
+1. Topbar global (`rounded-full` orbs di `(app)/layout.tsx`)
+2. Header `PageHeader` `Logs` + filter bar `rounded-sm border p-4 shadow-sm` dropdown `Device` + `Event Type` (7 tipe) `h-10 rounded-sm border bg-surface px-3`
+3. Timeline `relative` vertical line `left-[13px] w-px bg-border` + dot `h-3 w-3 rounded-full border-2` + blur `h-6 w-6 rounded-full blur 6px` + kartu `rounded-sm border bg-surface p-4 sm:p-5 hover:shadow-md`:
+   - Header `flex items-center gap-2` badge `rounded-full` + timestamp `font-mono text-xs` + `h-1 w-1 rounded-full bg-border`
+   - Deskripsi `text-sm` + body `pre max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-sm border bg-surface-subtle p-3`
+4. Empty `rounded-sm border-dashed bg-surface/60` + `EmptyState`
+5. Loading 5 skeleton `h-2.5 w-2.5 rounded-full` + `rounded-sm border p-5` + `h-5 w-28 rounded-full`
 
 > **Catatan:** Inbox/percakapan 2 kolom **tidak termasuk MVP** — diganti log aktivitas. Fitur balas dari dashboard masuk Phase lanjutan.
 
@@ -314,11 +316,10 @@ Layout: **kiri = brand panel** (bg-primary gradient, headline, capabilities list
 
 | Komponen         | File               | Deskripsi                                           |
 | ---------------- | ------------------ | --------------------------------------------------- |
-| `HeroPreview`    | `hero-preview.tsx` | Static mockup Devices screen untuk hero section     |
-| `DeviceStackVisual` | `feature-visuals.tsx` | Overlapping cards (QR panel + device list)      |
-| `AutoReplyVisual`| `feature-visuals.tsx` | Chat bubble mockup auto-reply flow              |
-| `LogsVisual`     | `feature-visuals.tsx` | Timeline log mockup dengan badges              |
-| `NewsletterForm` | `newsletter-form.tsx` | Email form → server action → toast feedback     |
+| `HeroPreview`    | `hero-preview.tsx` | Mockup Devices `rounded-sm border shadow-md`, stats, animasi `reveal` |
+| `FeatureVisuals` | `feature-visuals.tsx` | `DeviceStackVisual`/`AutoReplyVisual`/`LogsVisual` masih ada (`rounded-sm` seragam) tapi landing `#fitur` sekarang pakai `Image` SVG `device-stack/auto-reply/logs-timeline.svg` `rounded-sm shadow-lg` + light `blur-2xl` |
+| `NewsletterForm` | `newsletter-form.tsx` | `form max-w-sm` `Input + Button rounded-sm` `h-10 flex-1 rounded-sm` → `subscribeNewsletter()` `zod` validasi, `loading+disabled` guard, success `rounded-sm border-success/30 bg-success/10` |
+| `ScrollReveal`   | `scroll-reveal.tsx` | `IntersectionObserver` `animate-reveal/up/left/right/scale` + `delay-100..500` |
 
 ---
 
@@ -488,13 +489,15 @@ Merujuk ke `openapi.yaml` (root repo) — endpoint berikut dipakai di MVP. Semua
 
 ### 7.3 Design Tokens (CSS Custom Properties)
 
-Semua token sudah diimplementasi di `src/app/globals.css`:
+Semua token di `src/app/globals.css` (`@theme inline`):
 
-**Shadow tokens:** `--shadow-xs`, `--shadow-sm`, `--shadow-md`, `--shadow-lg` (opacity berbeda per theme)
+**Shadow tokens:** `--shadow-xs/sm/md/lg` opacity berbeda light vs dark.
 
-**Border radius tokens:** `--radius-sm: 6px`, `--radius-md: 8px`, `--radius-lg: 12px`, `--radius-xl: 16px`
+**Radius tokens:** `--radius-sm 6px` (seragam), `--radius-md 8px`, `--radius-lg 12px`, `--radius-xl 16px` (token tetap ada tapi komponen sekarang seragam `rounded-sm`, hanya orbs/dot `rounded-full`).
 
-**Penggunaan di komponen:** `rounded-[var(--radius-lg)]`, `shadow-[var(--shadow-md)]`, dst.
+**Cursor:** `@layer base { button:not(:disabled){cursor:pointer} button:disabled{cursor:not-allowed} }` + `@media (prefers-reduced-motion){ button:active{transform:scale(0.97)} }`, `Button` `cursor-pointer active:scale-[0.98]`.
+
+**Penggunaan sekarang:** `rounded-sm` (`rounded-[var(--radius-sm)]` dinormalisasi), `shadow-sm`, focus `ring-primary/40`, legal `TOC 270px truncate whitespace-nowrap`.
 
 ### 7.4 Referensi Mood
 
@@ -536,46 +539,47 @@ Semua token sudah diimplementasi di `src/app/globals.css`:
 
 ## 9. Status Implementasi (Codebase Audit)
 
-> Dokumen ini di-update pada **27 Agustus 2026** berdasarkan analisis menyeluruh terhadap codebase aktual.
+> Dokumen ini di-update pada **11 September 2026** (sinkron dengan `next 16.3.4`, `supabase-js 2.116.0`, `zod 4.5.4`).
 
-### 9.1 Fitur MVP — Status (diupdate 004)
+### 9.1 Fitur MVP — Status (diupdate 11 Sep 2026)
 
 | Fitur                         | Status         | Lokasi                              | Catatan                                           |
 | ----------------------------- | -------------- | ----------------------------------- | ------------------------------------------------- |
-| Auth (email + password)       | ✅ Implemented | `(auth)/auth/page.tsx`              | Login + Register, tab switcher, `loading+disabled` guard |
-| Auth (Google OAuth)           | ✅ Implemented | `(auth)/auth/page.tsx`              | `signInWithOAuth` → redirect `/devices`, `oauthLoading` guard |
-| Route protection (middleware) | ✅ Implemented | `src/proxy.ts` + `lib/supabase/middleware.ts` | Protects `/devices`, `/logs` (`/rules` dihapus 004) |
-| Landing page                  | ✅ Implemented | `(marketing)/page.tsx`              | Hero, features, how-it-works, creator, newsletter |
-| Navbar (marketing)            | ✅ Implemented | `components/navbar.tsx`             | Sticky, mobile hamburger, ThemeToggle             |
-| Footer (marketing)            | ✅ Implemented | `components/footer.tsx`             | Static footer                                      |
-| Theme toggle (dark/light)     | ✅ Implemented | `components/theme-toggle.tsx`       | `next-themes`, CSS transitions                    |
-| Device list                   | ✅ Implemented | `(app)/devices/page.tsx`            | CRUD, badges, **5s per-device polling** (visibility-aware, 1 call), auto-close QR/code modal, `Detail` link, anti double-click |
-| Device add + QR/Code connect  | ✅ Implemented | `(app)/devices/page.tsx`            | Modal tab **QR** (`qr_link`) / **Kode** (`pair_code`), `loading+disabled` guard, auto-refresh |
-| Device detail                 | ✅ Implemented | `(app)/devices/[deviceId]/page.tsx` | Tabs **Overview/Webhook/Automasi**, status 5s polling, WS fallback |
-| Device Webhook                | ❌ Removed     | — | Per-device webhook dihapus (tidak pengaruh automasi, yang pakai global `POST /api/webhook/gowa`) |
-| Device Automasi               | ✅ Implemented | `/api/devices/[id]/automations` + `/[aid]` + `page.tsx` | Per-device `device_automations` (prefix/contains/exact/regex → keyword/regex, `is_reply`/`mentions` `@everyone`/duration/`is_forwarded`, `target_jid` 1 per row duplicate per grup), group picker `GET /groups` (X-Device-Id, cached 30s, search, virtual 100), guard |
-| Group picker                  | ✅ Implemented | `page.tsx` `GroupItem` | `GET /user/my/groups` 500 limit, cached, search debounce, multi-select |
-| Device delete                 | ✅ Implemented | `(app)/devices/page.tsx` + `[deviceId]` | Confirmation modal `loading+disabled` |
-| Rules (legacy)                | ❌ Removed     | `004_per_device_automations.sql` | **DROP TOTAL** `rules`/`device_rules`, diganti `device_automations` |
-| Logs timeline                 | ✅ Implemented | `(app)/logs/page.tsx`               | Timeline + filters, Refresh `loading+disabled` |
-| Newsletter subscription       | ✅ Implemented | `components/marketing/newsletter-form.tsx` | Server action → `newsletters` table         |
-| GOWA bot proxy                | ✅ Implemented | `lib/gowa.ts`                       | Basic Auth, X-Device-Id header                    |
-| Webhook receiver              | ✅ Implemented | `api/webhook/gowa/route.ts`         | HMAC, `device_automations` per `device_key`, mentions/duration/forwarded |
-| UI primitives                 | ✅ Implemented | `components/ui/`                     | Button (`loading` → `disabled`), Input, Badge, Modal, Toggle, etc. |
-| Design tokens (CSS)           | ✅ Implemented | `globals.css`                       | Shadow, radius, color, font variables             |
-| Supabase RLS                  | ✅ Implemented | `supabase/migrations/001-004`       | All tables RLS + `user_owns_device`, Grants `003` |
-| Database schema               | ✅ Implemented | `supabase/migrations/004`           | `users`, `newsletters`, `user_devices`, `device_automations`, `logs` (rules di-drop) |
+| Auth (email + password)       | ✅ Implemented | `(auth)/auth/page.tsx`              | Login + Register, tab, `loading+disabled` + OAuth guard |
+| Auth (Google OAuth)           | ✅ Implemented | `(auth)/auth/page.tsx`              | `signInWithOAuth` → `/devices`, icon Google |
+| Route protection (middleware) | ✅ Implemented | `src/proxy.ts` + `lib/supabase/middleware.ts` | Protects `/devices`, `/logs`, `sitemap`/`robots` |
+| Landing page                  | ✅ Implemented | `(marketing)/page.tsx`              | Hero + `HeroPreview`, `#cara-pakai` 3 steps `rounded-sm`, `#fitur` `SectionFeature` centered SVG+light `blur-2xl rounded-sm max-w-[360px]` mobile `order-1` top, `#tentang`, `#newsletter`, Footer |
+| SEO                           | ✅ Implemented | `app/layout.tsx` + `sitemap.ts`/`robots.ts`/`icon.svg` | `metadataBase` `NEXT_PUBLIC_SITE_URL`, `title "%s: wenderdotnet"` colon, `openGraph/twitter` `/opengraph.png`, `robots` disallow `/api/` `/devices/` `/logs/` |
+| Legal pages                   | ✅ Implemented | `(marketing)/privacy` + `/terms`    | Header `py-14 lg:py-20`, grid `270px+1fr`, TOC `truncate whitespace-nowrap rounded-sm`, section `border-t pt-10` bernomor `01..09`, copy antislop, `rounded-sm` seragam, button `bg-primary` dark/light |
+| Navbar (marketing)            | ✅ Implemented | `components/navbar.tsx`             | Sticky, hamburger `rounded-sm cursor-pointer` |
+| Topbar (app)                  | ✅ Implemented | `components/topbar.tsx`             | `Devices/Logs`, logout `cursor-pointer active:scale` |
+| Theme toggle (dark/light)     | ✅ Implemented | `components/theme-toggle.tsx`       | `next-themes`, `rounded-sm cursor-pointer`, sun/moon |
+| Device list                   | ✅ Implemented | `(app)/devices/page.tsx`            | `rounded-sm` seragam, polling 5s visibility-aware 1 call, auto-close QR/kode, `Detail` link |
+| Device QR/Kode connect        | ✅ Implemented | `(app)/devices/page.tsx`            | Modal `rounded-sm animate-modal` tabs QR/Kode `rounded-sm`, `qr_link` / `pair_code`, `Copy/Check` |
+| Device detail                 | ✅ Implemented | `(app)/devices/[deviceId]/page.tsx` | Tabs `Overview/Webhook/Automasi` `rounded-sm`, group picker virtual 100, duplicate per `target_jid` |
+| Device Automasi               | ✅ Implemented | `/api/devices/[id]/automations`     | `trigger_category` prefix/contains/exact/regex, `is_reply`/`mentions`/`duration`/`is_forwarded`, `rounded-sm` forms |
+| Group picker                  | ✅ Implemented | `page.tsx` `GroupItem` | `GET /user/my/groups` 500 limit cache 30s, search debounce, `rounded-sm` |
+| Device delete                 | ✅ Implemented | `(app)/devices/page.tsx`            | `Modal rounded-sm` `loading+disabled` |
+| Rules (legacy)                | ❌ Removed     | `004` | DROP `rules`/`device_rules` → `device_automations` |
+| Logs timeline                 | ✅ Implemented | `(app)/logs/page.tsx`               | `rounded-sm` cards, filters `h-10 rounded-sm`, dot `rounded-full` blur, `loading+disabled` |
+| Newsletter                    | ✅ Implemented | `marketing/newsletter-form.tsx`     | `h-10 flex-1 rounded-sm` + `Button rounded-sm`, `zod` validasi |
+| GOWA proxy                    | ✅ Implemented | `lib/gowa.ts`                       | Basic Auth, `X-Device-Id` |
+| Webhook receiver              | ✅ Implemented | `api/webhook/gowa/route.ts`         | HMAC `X-Hub-Signature-256`, `session_id`→`device_key`, `chat_id` scope |
+| UI primitives                 | ✅ Implemented | `components/ui/`                     | `Button rounded-sm cursor-pointer active:scale`, `Input rounded-sm`, `Badge rounded-full`, `Modal rounded-sm`, `Toggle rounded-full` |
+| Design tokens                 | ✅ Implemented | `globals.css`                       | `--radius-sm 6px` seragam, `--shadow-*`, `@theme inline`, global cursor `active:scale-97` |
+| Supabase RLS                  | ✅ Implemented | `supabase/migrations/001-004`       | `user_owns_device`, grants `003` |
+| Comments cleanup              | ✅ Implemented | 11 Sep 2026 | Hapus `//` dan `{/* */}` + `{}` kosong, `privacy/terms` dikecualikan awal tapi sekarang dibersihkan, TOC `truncate` |
 
-### 9.2 Fitur yang Belum Diimplementasi (dari Spec) — update 004
+### 9.2 Fitur yang Belum Diimplementasi (dari Spec) — 11 Sep 2026
 
 | Fitur                          | Status           | Catatan                                                  |
 | ------------------------------ | ---------------- | -------------------------------------------------------- |
-| "Lupa password?" link          | ❌ Not in UI     | Belum ada di auth page; bisa ditambahkan via Supabase Auth |
-| Device role display            | ❌ Not in UI     | Kolom `role` ada di DB, tidak ditampilkan di UI          |
-| Zod validation                 | ⚠️ Installed     | `zod@4.4.3` sudah install tapi belum dipakai di code    |
-| WebSocket for status realtime  | ⚠️ Partial       | Polling 5s per-device + visibility-aware sudah, WS proxy disiapkan (BOT_AUTH server-only jadi polling utama) |
-| Device Settings → Rules assign | ✅ Implemented   | Sekarang per-device `device_automations` di `/devices/[id]` Automasi tab (prefix/contains/exact/regex, mentions, group picker) |
-| Pairing code login             | ✅ Implemented   | Tab QR/Kode di `devices/page.tsx` + `[deviceId]/page.tsx` (`POST /login/code`) |
+| "Lupa password?" link          | ❌ Not in UI     | Belum ada di auth page; bisa via Supabase Auth |
+| Device role display            | ❌ Not in UI     | Kolom `role` ada di DB, tidak ditampilkan |
+| Zod validation                 | ✅ Partial       | `zod@4.5.4` dipakai di `newsletter-form.tsx`, belum di semua forms |
+| WebSocket realtime             | ⚠️ Partial       | Polling 5s + visibility-aware utama, WS `/ws` disiapkan fallback |
+| Rules assign (legacy)          | ✅ Implemented   | `device_automations` per-device di detail Automasi tab |
+| Pairing code login             | ✅ Implemented   | QR/Kode tabs `POST /login/code` di devices + detail |
 
 ### 9.3 Ketidaksesuaian Spec vs Implementasi
 
@@ -601,6 +605,4 @@ File `design.png` di `.agents/` menunjukkan desain landing page untuk produk "Sl
 
 ---
 
-_Update 2026-09-10:_ Webhook per-device dihapus total (`src/app/api/devices/[deviceId]/webhook/*` + tab `Webhook` di detail), `src` comments dihapus (32 files, `://` preserve, `privacy/terms` dikecualikan), skeleton cuma initial (`loading && empty`), double notif QR dedup via `notifiedRef`.
-
-_Dokumen ini adalah sumber kebenaran (source of truth) pengembangan wenderdotnet. Ubah hanya melalui proses persetujuan eksplisit._
+_Update 2026-09-11:_ Landing `SectionFeature` centering (`max-w-[360px]` + light `blur-2xl rounded-sm` + mobile `order-1`/`order-2`) • Semua button `cursor-pointer active:scale` + `rounded-sm` seragam (hanya `rounded-full` untuk orbs/dot) • Privacy/Terms rewrite: hapus pill `Dokumen legal`, TOC `270px truncate whitespace-nowrap` tanpa ikon, section `border-t pt-10` bernomor `01..09`, copy antislop, button `bg-primary` dark/light • Comment cleanup `{/* */}` + `{}` kosong • `title` colon `"%s: wenderdotnet"` • Build 16.3.4 `pnpm build` pass.

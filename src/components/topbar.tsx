@@ -31,7 +31,6 @@ export function Topbar() {
       router.push("/auth");
       router.refresh();
     } finally {
-
       setTimeout(() => setLoggingOut(false), 2000);
     }
   }
@@ -41,9 +40,11 @@ export function Topbar() {
       <div className="mx-auto flex h-16 max-w-6xl items-center px-4 sm:px-6 lg:px-8">
         {}
         <div className="flex flex-1 items-center">
-          <Link href="/devices" onClick={close} className="flex items-center gap-2">
+          <Link href="/" onClick={close} className="flex items-center gap-2">
             <WMark className="h-5 w-5 text-[#34D399]" />
-            <span className="text-base font-semibold tracking-tight text-text-primary">wenderdotnet</span>
+            <span className="text-base font-semibold tracking-tight text-text-primary">
+              wenderdotnet
+            </span>
           </Link>
         </div>
 
@@ -55,10 +56,10 @@ export function Topbar() {
               href={link.href}
               aria-current={pathname === link.href ? "page" : undefined}
               className={cn(
-                "rounded-[var(--radius-sm)] px-3 py-2 text-sm font-medium transition-colors",
+                "rounded-sm px-3 py-2 text-sm font-medium transition-colors",
                 pathname === link.href
                   ? "bg-primary-subtle text-primary"
-                  : "text-text-secondary hover:text-text-primary hover:bg-surface-subtle"
+                  : "text-text-secondary hover:text-text-primary hover:bg-surface-subtle",
               )}
             >
               {link.label}
@@ -78,10 +79,13 @@ export function Topbar() {
             aria-label="Keluar dari akun"
             aria-busy={loggingOut}
             title="Keluar"
-            className="hidden h-9 w-9 place-items-center rounded-[var(--radius-sm)] text-text-muted transition-colors hover:bg-error/10 hover:text-error-strong disabled:pointer-events-none disabled:opacity-50 sm:grid"
+            className="hidden h-9 w-9 place-items-center rounded-sm text-text-muted transition-colors hover:bg-error/10 hover:text-error-strong disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 sm:grid cursor-pointer hover:cursor-pointer active:cursor-pointer active:scale-95"
           >
             {loggingOut ? (
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
+              <span
+                className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                aria-hidden
+              />
             ) : (
               <LogOut className="h-4 w-4" />
             )}
@@ -92,9 +96,13 @@ export function Topbar() {
             onClick={() => setOpen(!open)}
             aria-expanded={open}
             aria-label={open ? "Tutup menu" : "Buka menu"}
-            className="-mr-2 grid h-10 w-10 place-items-center rounded-[var(--radius-sm)] text-text-secondary transition-colors hover:bg-surface-subtle hover:text-text-primary sm:hidden"
+            className="-mr-2 grid h-10 w-10 place-items-center rounded-sm text-text-secondary transition-colors hover:bg-surface-subtle hover:text-text-primary sm:hidden cursor-pointer hover:cursor-pointer active:cursor-pointer active:scale-95"
           >
-            {open ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
+            {open ? (
+              <X className="h-5 w-5" aria-hidden />
+            ) : (
+              <Menu className="h-5 w-5" aria-hidden />
+            )}
           </button>
         </div>
       </div>
@@ -110,10 +118,10 @@ export function Topbar() {
                 onClick={close}
                 aria-current={pathname === link.href ? "page" : undefined}
                 className={cn(
-                  "rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-medium transition-colors",
+                  "rounded-sm px-3 py-2.5 text-sm font-medium transition-colors",
                   pathname === link.href
                     ? "bg-primary-subtle text-primary"
-                    : "text-text-secondary hover:bg-surface-subtle hover:text-text-primary"
+                    : "text-text-secondary hover:bg-surface-subtle hover:text-text-primary",
                 )}
               >
                 {link.label}
@@ -126,10 +134,13 @@ export function Topbar() {
                 onClick={handleLogout}
                 disabled={loggingOut}
                 aria-busy={loggingOut}
-                className="flex w-full items-center gap-2.5 rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-medium text-text-muted transition-colors hover:bg-error/10 hover:text-error-strong disabled:pointer-events-none disabled:opacity-50"
+                className="flex w-full items-center gap-2.5 rounded-sm px-3 py-2.5 text-sm font-medium text-text-muted transition-colors hover:bg-error/10 hover:text-error-strong disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 cursor-pointer hover:cursor-pointer active:cursor-pointer active:scale-[0.98]"
               >
                 {loggingOut ? (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
+                  <span
+                    className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                    aria-hidden
+                  />
                 ) : (
                   <LogOut className="h-4 w-4" />
                 )}

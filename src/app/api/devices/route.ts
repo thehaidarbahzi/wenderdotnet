@@ -105,7 +105,7 @@ export async function POST(request: Request) {
 
     const hint =
       dbError.code === "42501"
-        ? " (permission denied — jalankan supabase/migrations/003_grants.sql di Supabase SQL Editor)"
+        ? " (permission denied: jalankan supabase/migrations/003_grants.sql di Supabase SQL Editor)"
         : "";
     return NextResponse.json({ error: dbError.message + hint, code: dbError.code }, { status: 500 });
   }

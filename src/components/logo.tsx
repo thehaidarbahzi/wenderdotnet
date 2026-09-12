@@ -30,7 +30,7 @@ export function LogoMark({ className, color }: { className?: string; color?: str
   return (
     <span
       className={cn(
-        "grid h-7 w-7 shrink-0 place-items-center rounded-[var(--radius-md)] bg-primary text-white shadow-xs",
+        "grid h-7 w-7 shrink-0 place-items-center rounded-sm bg-primary text-white shadow-xs",
         className
       )}
       aria-hidden

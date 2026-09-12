@@ -4,19 +4,23 @@
 
 These come from the approved spec (`.agents/coldstart.md` §2.9). Breaking them breaks the architecture:
 
-1. **Server actions live only in `src/server/actions/`** (`auth.ts`, `devices.ts`, `logs.ts`, `newsletter.ts` — `rules.ts` removed in 004, replaced by per-device `device_automations` via `src/app/api/devices/[deviceId]/automations/*`). Frontend files must never contain `"use server"`; they import and call the methods.
+1. **Mutasi server di `src/app/api/` dan `src/server/actions/`**: `newsletter.ts` tetap di `src/server/actions/`, tetapi `devices`/`automations`/`groups`/`login` sekarang lewat route handlers `src/app/api/devices/*` (proxy ke `BOT_API_URL`). Frontend tidak boleh punya `"use server"`; panggil via API atau server action.
 2. **All bot API access goes through `src/lib/gowa.ts`** (fetch + Basic Auth). Never call `BOT_API_URL` directly from a route handler, action, or (worse) client code.
 3. **Supabase service-role client is server-only** (`src/lib/supabase/server.ts`). The browser uses the anon client (`src/lib/supabase/client.ts`). Never import the server module from a client component.
-4. **A device row is inserted only after the bot reports logged in.** Never create `user_devices` entries for disconnected/abandoned slots; guard inserts with a `(user_id, device_key)` upsert check.
+4. **A device row is inserted only after the bot reports logged_in.** Never create `user_devices` entries for disconnected/abandoned slots; guard inserts with a `(user_id, device_key)` upsert check.
+5. **SEO single source**: `src/app/layout.tsx` `metadata` (`title: "%s: wenderdotnet"` dengan colon, `metadataBase` dari `NEXT_PUBLIC_SITE_URL`, `openGraph`/`twitter` `/opengraph.png`, `sitemap.ts`/`robots.ts`). Jangan duplikasi di halaman lain kecuali per-page `title` spesifik.
 
 ## Common tasks
 
 ### Changing UI
 
 - Design tokens (colors, radii, shadows) are CSS variables in `src/app/globals.css`, exposed to Tailwind v4 via `@theme inline`. Change values there, not in components.
+- Radius seragam `rounded-sm` (6px `--radius-sm`) untuk semua kartu/input/modal — jangan pakai `rounded-xl/lg/md` lagi (hanya `rounded-full` untuk orbs blur dan dot). `Button` punya global `@layer base { button{cursor:pointer} }` + `active:scale-97`; jangan hilangkan.
 - Semantic text colors use the `-strong` variants (`text-success-strong`, etc.) because the base semantic colors fail WCAG AA on light surfaces when used as small text.
-- Dark mode is class-based via `next-themes`; every new surface must look correct in both themes (the app ships both).
-- Keep copy in Indonesian (`lang="id"`), matching the existing tone.
+- Dark mode is class-based via `next-themes`; every new surface must look correct in both themes (the app ships both). Tombol kontak di legal memakai `bg-primary text-white` agar kontras di light dan dark (jangan `bg-text-primary text-white`).
+- Legal pages (`/privacy`, `/terms`) punya header `py-14 lg:py-20`, konten `py-10 lg:py-16`, grid TOC `270px + 1fr`, item `truncate whitespace-nowrap`, section `border-t pt-10` dengan nomor mono `01..09`, copy antislop tanpa em dash dan tanpa buzzword.
+- Landing `SectionFeature` harus `max-w-[360px]` terpusat, light `blur-2xl` `left-1/2 -translate`, `rounded-sm`, mobile `order-1` visual di atas teks `order-2` `text-center lg:text-left`.
+- Keep copy in Indonesian (`lang="id"`), matching the existing tone, antislop (no AI slop, no fabricated stats).
 
 ### Adding a page or section
 
