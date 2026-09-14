@@ -8,6 +8,8 @@ import {
   Activity,
   RefreshCw,
   SearchX,
+  AlertTriangle,
+  Zap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,13 +56,13 @@ const dotColorMap: Record<string, string> = {
 };
 
 const eventTypeLabels: Record<string, string> = {
-  message_received: "Message Received",
-  message_sent: "Message Sent",
-  auto_reply_sent: "Auto Reply Sent",
-  auto_read: "Auto Read",
-  session_connected: "Session Connected",
-  session_disconnected: "Session Disconnected",
-  error: "Error",
+  message_received: "Pesan Diterima",
+  message_sent: "Pesan Terkirim",
+  auto_reply_sent: "Balasan Otomatis Terkirim",
+  auto_read: "Tandai Terbaca Otomatis",
+  session_connected: "Sesi Terhubung",
+  session_disconnected: "Sesi Terputus",
+  error: "Galat",
 };
 
 function timeAgo(dateStr: string): string {
@@ -96,6 +98,8 @@ export default function LogsPage() {
   const [devices, setDevices] = useState<DeviceOption[]>([]);
   const [selectedDevice, setSelectedDevice] = useState("");
   const [selectedEventType, setSelectedEventType] = useState("");
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => setHasMounted(true), []);
 
   const stats = useMemo(() => {
     const total = logs.length;
@@ -155,51 +159,72 @@ export default function LogsPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Activity · Timeline"
-        title="Logs"
-        description="Semua aktivitas tercatat di sini: pesan masuk, balasan otomatis, auto-read, hingga error koneksi. Filter per device atau jenis event untuk debugging."
+        title="Log"
+        description="Semua aktivitas tercatat di sini: pesan masuk, balasan otomatis, baca otomatis, hingga galat koneksi. Saring per perangkat atau jenis kejadian untuk penelusuran."
         actions={
           <Button
             variant="secondary"
             onClick={() => {
               if (!loading) fetchLogs();
             }}
-            disabled={loading}
-            loading={loading}
-            aria-label="Muat ulang logs"
-            aria-busy={loading}
+            disabled={hasMounted ? loading : false}
+            loading={hasMounted ? loading : false}
+            aria-label="Muat ulang log"
+            aria-busy={hasMounted ? loading : false}
           >
             <RefreshCw className="h-4 w-4" />
-            Refresh
+            Muat Ulang
           </Button>
         }
       />
 
       {}
-      {!loading && logs.length > 0 && (
+      {loading ? (
         <StatGrid>
-          <StatCard
-            label="Total Events"
-            value={logs.length}
-            hint={hasActiveFilter ? "Hasil filter saat ini" : "Semua device"}
-            icon={<ScrollText className="h-5 w-5" />}
-            tone="default"
-          />
-          <StatCard
-            label="Auto Replies"
-            value={stats.autoReply}
-            hint="Balasan otomatis terkirim"
-            icon={<Activity className="h-5 w-5" />}
-            tone="success"
-          />
-          <StatCard
-            label="Gangguan"
-            value={stats.errors}
-            hint={stats.errors > 0 ? "Perlu diperiksa" : "Tidak ada error"}
-            icon={<Clock className="h-5 w-5" />}
-            tone={stats.errors > 0 ? "warning" : "default"}
-          />
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="rounded-sm border border-border bg-surface p-5 shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 space-y-3">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-7 w-12" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+                <Skeleton className="h-10 w-10 rounded-sm" />
+              </div>
+            </div>
+          ))}
         </StatGrid>
+      ) : (
+        logs.length > 0 && (
+          <StatGrid>
+            <StatCard
+              label="Total Kejadian"
+              value={logs.length}
+              hint={
+                hasActiveFilter ? "Hasil saringan saat ini" : "Semua perangkat"
+              }
+              icon={<ScrollText className="h-5 w-5" />}
+              tone="default"
+            />
+            <StatCard
+              label="Balasan Otomatis"
+              value={stats.autoReply}
+              hint="Balasan otomatis terkirim"
+              icon={<Zap className="h-5 w-5" />}
+              tone="success"
+            />
+            <StatCard
+              label="Gangguan"
+              value={stats.errors}
+              hint={stats.errors > 0 ? "Perlu diperiksa" : "Tidak ada galat"}
+              icon={<AlertTriangle className="h-5 w-5" />}
+              tone={stats.errors > 0 ? "warning" : "default"}
+            />
+          </StatGrid>
+        )
       )}
 
       {}
@@ -208,7 +233,7 @@ export default function LogsPage() {
           <span className="grid h-7 w-7 place-items-center rounded-sm bg-surface-subtle border border-border text-text-muted">
             <Filter className="h-3.5 w-3.5" />
           </span>
-          <p className="text-sm font-semibold text-text-primary">Filter</p>
+          <p className="text-sm font-semibold text-text-primary">Saring</p>
           {hasActiveFilter && (
             <span className="ml-auto inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
               {logs.length} hasil
@@ -224,7 +249,7 @@ export default function LogsPage() {
               }}
               className="ml-1 h-7 px-2 text-xs"
             >
-              Reset
+              Atur Ulang
             </Button>
           )}
         </div>
@@ -235,7 +260,7 @@ export default function LogsPage() {
               htmlFor="device-filter"
               className="text-xs font-medium uppercase tracking-wider text-text-muted"
             >
-              Device
+              Perangkat
             </label>
             <select
               id="device-filter"
@@ -243,7 +268,7 @@ export default function LogsPage() {
               onChange={(e) => setSelectedDevice(e.target.value)}
               className="h-10 w-full rounded-sm border border-border bg-surface px-3 py-2 text-sm text-text-primary shadow-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
             >
-              <option value="">Semua Device</option>
+              <option value="">Semua Perangkat</option>
               {devices.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.display_name}
@@ -257,7 +282,7 @@ export default function LogsPage() {
               htmlFor="event-filter"
               className="text-xs font-medium uppercase tracking-wider text-text-muted"
             >
-              Event Type
+              Jenis Kejadian
             </label>
             <select
               id="event-filter"
@@ -265,7 +290,7 @@ export default function LogsPage() {
               onChange={(e) => setSelectedEventType(e.target.value)}
               className="h-10 w-full rounded-sm border border-border bg-surface px-3 py-2 text-sm text-text-primary shadow-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
             >
-              <option value="">Semua Event</option>
+              <option value="">Semua Kejadian</option>
               {Object.entries(eventTypeLabels).map(([key, label]) => (
                 <option key={key} value={key}>
                   {label}
@@ -285,12 +310,12 @@ export default function LogsPage() {
                 <div className="relative z-10 mt-4 hidden h-2.5 w-2.5 shrink-0 items-center justify-center sm:flex">
                   <Skeleton className="h-2.5 w-2.5 rounded-full" />
                 </div>
-                <div className="flex-1 rounded-sm border border-border bg-surface p-5 shadow-sm">
+                <div className="flex-1 min-w-0 rounded-sm border border-border bg-surface p-5 shadow-sm">
                   <div className="flex flex-wrap items-center gap-2">
                     <Skeleton className="h-3 w-24" />
                     <Skeleton className="h-5 w-28 rounded-full" />
                   </div>
-                  <Skeleton className="mt-3 h-4 w-64" />
+                  <Skeleton className="mt-3 h-4 w-full max-w-64" />
                   <Skeleton className="mt-2 h-16 w-full rounded-sm" />
                 </div>
               </div>
@@ -300,11 +325,11 @@ export default function LogsPage() {
       ) : logs.length === 0 ? (
         <div className="rounded-sm border border-dashed border-border bg-surface/60 p-1">
           <EmptyState
-            title={hasActiveFilter ? "Tidak ada hasil" : "Belum ada logs"}
+            title={hasActiveFilter ? "Tidak ada hasil" : "Belum ada log"}
             description={
               hasActiveFilter
-                ? "Tidak ada log yang cocok dengan filter yang dipilih. Coba ubah device atau jenis event."
-                : "Aktivitas akan muncul di sini setelah device mulai bekerja. Pastikan device sudah connected dan rules aktif."
+                ? "Tidak ada log yang cocok dengan saringan yang dipilih. Coba ubah perangkat atau jenis kejadian."
+                : "Aktivitas akan muncul di sini setelah perangkat mulai bekerja. Pastikan perangkat sudah terhubung dan aturan aktif."
             }
             icon={
               hasActiveFilter ? (
@@ -322,7 +347,7 @@ export default function LogsPage() {
                     setSelectedEventType("");
                   }}
                 >
-                  Hapus filter
+                  Hapus saringan
                 </Button>
               ) : undefined
             }
@@ -333,9 +358,9 @@ export default function LogsPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold tracking-tight text-text-primary">
-              Timeline{" "}
+              Linimasa{" "}
               <span className="font-normal text-text-muted">
-                · {logs.length} events
+                · {logs.length} kejadian
               </span>
             </h2>
             <p className="hidden text-xs text-text-muted sm:block">

@@ -118,7 +118,7 @@ export default function DevicesPage() {
               data.state === "logged_in";
             if (loggedIn && !notifiedRef.current.has(d.id)) {
               notifiedRef.current.add(d.id);
-              toast.success(`${d.display_name} connected!`);
+              toast.success(`${d.display_name} terhubung!`);
               setQrModal(false);
               setQrUrl("");
               setPairCode(null);
@@ -163,7 +163,7 @@ export default function DevicesPage() {
               !notifiedRef.current.has(matched.id)
             ) {
               notifiedRef.current.add(matched.id);
-              toast.success(`${matched.display_name} connected!`);
+              toast.success(`${matched.display_name} terhubung!`);
               setQrModal(false);
               setQrUrl("");
               setPairCode(null);
@@ -233,7 +233,7 @@ export default function DevicesPage() {
             "";
           if (code) {
             setPairCode(code);
-            toast.success("Kode pairing didapatkan");
+            toast.success("Kode taut didapatkan");
           } else toast.error(data.error || "Kode tidak tersedia");
         } else {
           toast.error(data.error || "Gagal mendapatkan kode");
@@ -289,7 +289,7 @@ export default function DevicesPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Gagal membuat device");
+        throw new Error(err.error || "Gagal membuat perangkat");
       }
 
       const data = await res.json();
@@ -311,7 +311,9 @@ export default function DevicesPage() {
       await fetchQr(data.device.id);
       fetchDevices();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gagal menambah device");
+      toast.error(
+        err instanceof Error ? err.message : "Gagal menambah perangkat",
+      );
     } finally {
       setCreating(false);
     }
@@ -324,14 +326,14 @@ export default function DevicesPage() {
       const res = await fetch(`/api/devices/${deviceId}`, { method: "DELETE" });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Gagal menghapus device");
+        throw new Error(err.error || "Gagal menghapus perangkat");
       }
-      toast.success("Device dihapus");
+      toast.success("Perangkat dihapus");
       fetchDevices();
       setDeleteConfirm(null);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Gagal menghapus device",
+        err instanceof Error ? err.message : "Gagal menghapus perangkat",
       );
     } finally {
       setDeleting(false);
@@ -341,11 +343,11 @@ export default function DevicesPage() {
   function getStateBadge(state: string) {
     switch (state) {
       case "logged_in":
-        return <Badge variant="success">Connected</Badge>;
+        return <Badge variant="success">Terhubung</Badge>;
       case "connecting":
-        return <Badge variant="warning">Connecting</Badge>;
+        return <Badge variant="warning">Menghubungkan</Badge>;
       default:
-        return <Badge variant="default">Disconnected</Badge>;
+        return <Badge variant="default">Terputus</Badge>;
     }
   }
 
@@ -365,13 +367,12 @@ export default function DevicesPage() {
         ← Kembali ke Beranda
       </Link>
       <PageHeader
-        eyebrow="Workspace · WhatsApp"
-        title="Devices"
-        description="Kelola semua nomor WhatsApp Anda. Tambah device, scan QR seperti WhatsApp Web, dan pantau status koneksi real-time."
+        title="Perangkat"
+        description="Kelola semua nomor WhatsApp Anda. Tambah perangkat, pindai QR seperti WhatsApp Web, dan pantau status koneksi secara langsung."
         actions={
           <Button onClick={() => setAddModal(true)} size="md">
             <Plus className="h-4 w-4" />
-            Tambah Device
+            Tambah Perangkat
           </Button>
         }
       />
@@ -380,9 +381,9 @@ export default function DevicesPage() {
       {devices.length > 0 && (
         <StatGrid>
           <StatCard
-            label="Total Devices"
+            label="Total Perangkat"
             value={stats.total}
-            hint={`${stats.connected} connected · ${stats.disconnected} offline`}
+            hint={`${stats.connected} terhubung · ${stats.disconnected} terputus`}
             icon={<Smartphone className="h-5 w-5" />}
             tone="default"
           />
@@ -403,7 +404,7 @@ export default function DevicesPage() {
             hint={
               stats.connecting > 0
                 ? `${stats.connecting} menunggu QR`
-                : "Semua device stabil"
+                : "Semua perangkat stabil"
             }
             icon={<WifiOff className="h-5 w-5" />}
             tone={
@@ -417,7 +418,10 @@ export default function DevicesPage() {
         <div className="space-y-6">
           <StatGrid>
             {[1, 2, 3].map((i) => (
-              <div key={i} className="rounded-sm border border-border bg-surface p-5 shadow-sm">
+              <div
+                key={i}
+                className="rounded-sm border border-border bg-surface p-5 shadow-sm"
+              >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 space-y-3">
                     <Skeleton className="h-3 w-20" />
@@ -434,25 +438,28 @@ export default function DevicesPage() {
               <Skeleton className="h-4 w-28" />
               <Skeleton className="h-6 w-16 rounded-sm" />
             </div>
-            <div className="grid gap-3">
+            <div className="grid gap-4">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="rounded-sm border border-border bg-surface p-5 shadow-sm">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex min-w-0 flex-1 gap-3.5">
+                <div
+                  key={i}
+                  className="rounded-sm border border-border bg-surface p-5 sm:p-6 shadow-sm"
+                >
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="flex min-w-0 flex-1 items-start gap-4 lg:self-start">
                       <Skeleton className="hidden h-11 w-11 shrink-0 rounded-sm sm:block" />
-                      <div className="flex-1 space-y-3">
-                        <div className="flex items-center gap-2">
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-3">
                           <Skeleton className="h-5 w-32" />
                           <Skeleton className="h-5 w-20 rounded-full" />
                         </div>
                         <Skeleton className="h-3 w-48" />
-                        <Skeleton className="h-3 w-48" />
+                        <Skeleton className="h-3 w-64" />
                       </div>
                     </div>
-                    <div className="flex w-full flex-col gap-2 sm:w-[180px] lg:shrink-0">
-                      <Skeleton className="h-9 w-full rounded-sm" />
-                      <Skeleton className="h-9 w-full rounded-sm" />
-                      <Skeleton className="h-9 w-full rounded-sm" />
+                    <div className="flex w-full flex-col gap-2 lg:w-[200px] lg:shrink-0">
+                      <Skeleton className="h-9 w-full rounded-sm border border-border" />
+                      <Skeleton className="h-9 w-full rounded-sm border border-border" />
+                      <Skeleton className="h-9 w-full rounded-sm border border-border" />
                     </div>
                   </div>
                 </div>
@@ -463,8 +470,8 @@ export default function DevicesPage() {
       ) : devices.length === 0 ? (
         <div className="rounded-sm border border-dashed border-border bg-surface/60 p-1">
           <EmptyState
-            title="Belum ada device"
-            description="Tambahkan device WhatsApp pertama Anda. Sama seperti WhatsApp Web: beri nama, scan QR, dan device langsung terhubung. Tidak perlu setting server."
+            title="Belum ada perangkat"
+            description="Tambahkan perangkat WhatsApp pertama Anda. Sama seperti WhatsApp Web: beri nama, pindai QR, dan perangkat langsung terhubung. Tidak perlu atur server."
             icon={<QrCode className="h-5 w-5" />}
             className="border-0 bg-transparent"
           />
@@ -482,7 +489,7 @@ export default function DevicesPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold tracking-tight text-text-primary">
-              Daftar device{" "}
+              Daftar perangkat{" "}
               <span className="font-normal text-text-muted">
                 · {devices.length} total
               </span>
@@ -501,34 +508,34 @@ export default function DevicesPage() {
               <RefreshCw
                 className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
               />
-              Refresh
+              Muat Ulang
             </button>
           </div>
 
-          <div className="grid gap-3">
+          <div className="grid gap-4">
             {devices.map((device) => (
               <div
                 key={device.id}
-                className="group relative flex flex-col gap-4 rounded-sm border border-border bg-surface p-5 shadow-sm transition-all hover:shadow-md hover:border-primary/20 lg:flex-row lg:items-center lg:justify-between"
+                className="group relative flex flex-col gap-5 rounded-sm border border-border bg-surface p-5 sm:p-6 shadow-sm transition-all hover:shadow-md hover:border-primary/20 lg:flex-row lg:items-start lg:justify-between"
               >
-                <div className="flex min-w-0 flex-1 gap-3.5">
+                <div className="flex min-w-0 flex-1 items-start gap-4 lg:self-start">
                   <div className="hidden h-11 w-11 shrink-0 place-items-center rounded-sm border border-border bg-surface-subtle text-text-muted transition-colors group-hover:border-primary/20 group-hover:bg-primary/10 group-hover:text-primary sm:grid">
                     <Smartphone className="h-5 w-5" />
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center gap-3">
                       <Link
                         href={`/devices/${device.id}`}
-                        className="truncate text-[15px] font-semibold text-text-primary hover:text-primary hover:underline"
+                        className="truncate text-[15px] font-semibold leading-tight text-text-primary hover:text-primary hover:underline"
                       >
                         {device.display_name}
                       </Link>
                       {getStateBadge(device.state)}
                     </div>
-                    <p className="mt-1 truncate font-mono text-xs text-text-muted">
+                    <p className="truncate font-mono text-xs leading-normal text-text-muted">
                       {device.id}
                     </p>
-                    <p className="mt-1.5 text-xs leading-relaxed text-text-secondary">
+                    <p className="text-xs leading-relaxed text-text-secondary">
                       {getStateHint(device.state)}
                     </p>
                   </div>
@@ -539,7 +546,7 @@ export default function DevicesPage() {
                     <Button
                       variant="secondary"
                       size="sm"
-                      className="w-full justify-center gap-1.5 rounded-sm border border-primary/20 bg-primary/5 text-primary hover:bg-primary hover:text-white"
+                      className="w-full justify-center gap-1.5 rounded-sm border border-primary/20 bg-primary-subtle text-[#1E4D3B] hover:bg-primary hover:text-[#0F172A] dark:bg-[#1E4D3B]/30 dark:border-primary/20 dark:text-[#6EE7B7] dark:hover:bg-primary dark:hover:text-[#0B1120]"
                     >
                       Lihat Detail
                       <ExternalLink className="h-3.5 w-3.5" />
@@ -575,15 +582,15 @@ export default function DevicesPage() {
                           );
                           if (!res.ok) {
                             const err = await res.json().catch(() => ({}));
-                            throw new Error(err.error || "Gagal disconnect");
+                            throw new Error(err.error || "Gagal memutus");
                           }
-                          toast.success("Device disconnected");
+                          toast.success("Perangkat terputus");
                           fetchDevices();
                         } catch (err) {
                           toast.error(
                             err instanceof Error
                               ? err.message
-                              : "Gagal disconnect",
+                              : "Gagal memutus",
                           );
                         } finally {
                           setDisconnectingId(null);
@@ -592,18 +599,18 @@ export default function DevicesPage() {
                       className="w-full justify-center rounded-sm"
                     >
                       <Unplug className="h-3.5 w-3.5" />
-                      Disconnect
+                      Putuskan
                     </Button>
                   )}
                   <Button
-                    variant="ghost"
+                    variant="secondary"
                     size="sm"
                     aria-label={`Hapus ${device.display_name}`}
                     onClick={() => setDeleteConfirm(device.id)}
-                    className="w-full justify-center gap-1.5 rounded-sm text-text-muted hover:text-error hover:bg-error/10"
+                    className="w-full justify-center gap-1.5 rounded-sm border border-border text-text-muted hover:text-error hover:border-error/20 hover:bg-error/5"
                   >
                     <Trash2 className="h-4 w-4" />
-                    Hapus device
+                    Hapus perangkat
                   </Button>
                 </div>
               </div>
@@ -616,15 +623,15 @@ export default function DevicesPage() {
       <Modal
         open={addModal}
         onClose={() => setAddModal(false)}
-        title="Tambah Device"
+        title="Tambah Perangkat"
       >
         <div className="space-y-5">
           <p className="text-sm leading-relaxed text-text-secondary">
             Beri nama yang mudah dikenali untuk nomor ini. Anda akan diminta
-            scan QR di langkah berikutnya.
+            pindai QR di langkah berikutnya.
           </p>
           <Input
-            label="Nama Device"
+            label="Nama Perangkat"
             placeholder="Contoh: Toko Online"
             value={deviceName}
             onChange={(e) => setDeviceName(e.target.value)}
@@ -671,7 +678,7 @@ export default function DevicesPage() {
               }`}
             >
               <QrCode className="h-4 w-4" />
-              QR Code
+              Kode QR
             </button>
             <button
               role="tab"
@@ -686,7 +693,7 @@ export default function DevicesPage() {
               }`}
             >
               <KeyRound className="h-4 w-4" />
-              Kode Pairing
+              Kode Taut
             </button>
           </div>
 
@@ -702,7 +709,7 @@ export default function DevicesPage() {
                 <span className="font-medium text-text-primary">
                   WhatsApp → Perangkat Tertaut → Tautkan perangkat
                 </span>
-                , lalu scan QR di bawah. QR berlaku ~30 detik.
+                , lalu pindai QR di bawah. QR berlaku sekitar 30 detik.
               </div>
               <div className="flex justify-center">
                 {qrLoading ? (
@@ -710,7 +717,7 @@ export default function DevicesPage() {
                 ) : qrUrl ? (
                   <img
                     src={qrUrl}
-                    alt="QR Code WhatsApp"
+                    alt="Kode QR WhatsApp"
                     className="h-64 w-64 rounded-sm border border-border bg-white p-2 shadow-sm"
                   />
                 ) : (
@@ -726,7 +733,7 @@ export default function DevicesPage() {
                   aria-hidden
                 />
                 {selectedDevice?.state === "connecting"
-                  ? "Menunggu scan..."
+                  ? "Menunggu pindai..."
                   : "Menyiapkan QR..."}
               </div>
               <div className="flex justify-end gap-2 border-t border-border pt-4">
@@ -796,7 +803,7 @@ export default function DevicesPage() {
                 {pairCode ? (
                   <div className="rounded-sm border border-primary/20 bg-primary/5 p-4 text-center">
                     <p className="text-xs font-medium uppercase tracking-widest text-text-muted">
-                      Kode Pairing
+                      Kode Taut
                     </p>
                     <div className="mt-2 flex items-center justify-center gap-2">
                       <span className="font-mono text-3xl font-bold tracking-[0.2em] text-text-primary select-all">
@@ -821,8 +828,8 @@ export default function DevicesPage() {
                       </button>
                     </div>
                     <p className="mt-2 text-xs leading-relaxed text-text-secondary">
-                      Masukkan kode ini di HP dalam 30-60 detik. Jika expired,
-                      klik Dapatkan Kode lagi.
+                      Masukkan kode ini di HP dalam 30-60 detik. Jika
+                      kedaluwarsa, klik Dapatkan Kode lagi.
                     </p>
                     <div className="mt-3 flex items-center justify-center gap-2 text-xs text-text-muted">
                       <span
@@ -866,15 +873,15 @@ export default function DevicesPage() {
       <Modal
         open={!!deleteConfirm}
         onClose={() => !deleting && setDeleteConfirm(null)}
-        title="Hapus Device"
+        title="Hapus Perangkat"
       >
         <div className="space-y-4">
           <p className="text-sm leading-relaxed text-text-secondary">
-            Device akan dihapus permanen dari bot dan database. Sesi WhatsApp
-            akan terputus dan tidak dapat dibatalkan.
+            Perangkat akan dihapus permanen dari bot dan basis data. Sesi
+            WhatsApp akan terputus dan tidak dapat dibatalkan.
           </p>
           <div className="rounded-sm border border-error/20 bg-error/5 px-3 py-2.5 text-xs leading-relaxed text-error-strong">
-            Tindakan ini tidak dapat diurungkan. Pastikan device tidak sedang
+            Tindakan ini tidak dapat diurungkan. Pastikan perangkat tidak sedang
             melayani pelanggan aktif.
           </div>
           <div className="flex justify-end gap-2 border-t border-border pt-4">

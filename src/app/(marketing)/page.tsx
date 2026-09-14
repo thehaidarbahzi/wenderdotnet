@@ -8,7 +8,7 @@ import { ScrollReveal } from "@/components/scroll-reveal";
 
 const STEPS = [
   {
-    title: "Masuk dan tambah device",
+    title: "Masuk dan tambah perangkat",
     desc: "Beri nama nomor WhatsApp Anda, misalnya \u201CToko Online\u201D.",
     icon: (
       <svg
@@ -23,8 +23,8 @@ const STEPS = [
     ),
   },
   {
-    title: "Scan QR dari aplikasi WhatsApp",
-    desc: "Sama seperti WhatsApp Web. Device langsung terhubung.",
+    title: "Pindai QR dari aplikasi WhatsApp",
+    desc: "Sama seperti WhatsApp Web. Perangkat langsung terhubung.",
     icon: (
       <svg
         className="h-6 w-6"
@@ -97,8 +97,8 @@ export default function LandingPage() {
             </ScrollReveal>
             <ScrollReveal delay={200}>
               <p className="mx-auto mt-5 max-w-xl text-pretty text-lg leading-relaxed text-text-secondary">
-                Hubungkan beberapa nomor, atur auto-reply, dan pantau semua
-                aktivitas. Cukup scan QR, tanpa instalasi teknis.
+                Hubungkan beberapa nomor, atur balasan otomatis, dan pantau
+                semua aktivitas. Cukup pindai QR, tanpa instalasi teknis.
               </p>
             </ScrollReveal>
             <ScrollReveal delay={300}>
@@ -181,9 +181,9 @@ export default function LandingPage() {
             <SectionFeature
               title="Semua nomor di satu tempat"
               description="
-                Tambah device sebanyak yang Anda butuhkan, connect lewat QR,
+                Tambah perangkat sebanyak yang Anda butuhkan, hubungkan lewat QR,
                 dan pantau statusnya langsung dari daftar. Nomor bermasalah?
-                Disconnect dan sambungkan ulang tanpa konfigurasi ulang."
+                Putuskan dan sambungkan ulang tanpa konfigurasi ulang."
               ctaLabel="Hubungkan nomor pertama"
               visual={
                 <div className="relative flex w-full items-center justify-center isolate">
@@ -193,7 +193,7 @@ export default function LandingPage() {
                   />
                   <Image
                     src="/illustrations/device-stack.svg"
-                    alt="Device management dashboard"
+                    alt="Dasbor manajemen perangkat"
                     width={300}
                     height={300}
                     className="relative block h-auto w-full max-w-75 mx-auto rounded-sm shadow-lg"
@@ -205,12 +205,12 @@ export default function LandingPage() {
           <ScrollReveal>
             <SectionFeature
               reversed
-              title="Auto-reply yang bisa dikontrol"
+              title="Balasan otomatis yang bisa dikontrol"
               description="
-                Buat aturan berbasis keyword atau regex, arahkan ke grup atau
+                Buat aturan berbasis kata kunci atau pola regex, arahkan ke grup atau
                 chat pribadi tertentu. Balasan terkirim otomatis saat Anda
                 tidak bisa memegang ponsel."
-              ctaLabel="Coba aturan auto-reply"
+              ctaLabel="Coba aturan balasan otomatis"
               visual={
                 <div className="relative flex w-full items-center justify-center isolate">
                   <div
@@ -219,7 +219,7 @@ export default function LandingPage() {
                   />
                   <Image
                     src="/illustrations/auto-reply.svg"
-                    alt="Auto-reply chat flow"
+                    alt="Alur balasan otomatis"
                     width={300}
                     height={200}
                     className="relative block h-auto w-full max-w-[320px] mx-auto rounded-sm shadow-lg"
@@ -232,9 +232,9 @@ export default function LandingPage() {
             <SectionFeature
               title="Setiap aktivitas tercatat"
               description="
-                Pesan masuk, balasan otomatis, auto-read, sampai error koneksi:
-                semuanya ada di timeline log, bisa difilter per device dan
-                jenis event."
+                Pesan masuk, balasan otomatis, baca otomatis, sampai galat koneksi:
+                semuanya ada di linimasa log, bisa difilter per perangkat dan
+                jenis kejadian."
               ctaLabel="Lihat contoh lognya"
               visual={
                 <div className="relative flex w-full items-center justify-center isolate">
@@ -244,7 +244,7 @@ export default function LandingPage() {
                   />
                   <Image
                     src="/illustrations/logs-timeline.svg"
-                    alt="Activity log timeline"
+                    alt="Linimasa log aktivitas"
                     width={300}
                     height={250}
                     className="relative block h-auto w-full max-w-[320px] mx-auto rounded-sm shadow-lg"

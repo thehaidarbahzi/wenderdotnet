@@ -14,7 +14,7 @@ export function HeroPreview() {
         <div className="flex items-center gap-2 border-b border-border px-4 py-3 sm:px-5">
           <WMark className="h-[18px] w-[18px] text-primary" />
           <span className="text-sm font-semibold text-text-primary">wenderdotnet</span>
-          <span className="ml-2 hidden text-xs text-text-muted sm:inline">Devices</span>
+          <span className="ml-2 hidden text-xs text-text-muted sm:inline">Perangkat</span>
         </div>
 
         <div className="space-y-3 p-4 sm:p-5">
@@ -24,34 +24,34 @@ export function HeroPreview() {
               <p className="truncate text-sm font-medium text-text-primary">Toko Online</p>
               <p className="mt-0.5 truncate font-mono text-xs text-text-muted">62812•••••••@s.whatsapp.net</p>
             </div>
-            <Badge variant="success">Connected</Badge>
+            <Badge variant="success">Terhubung</Badge>
           </div>
 
           <div className="flex items-center justify-between gap-3 rounded-sm border border-border bg-surface-subtle/60 p-3.5">
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-text-primary">CS Admin</p>
-              <p className="mt-0.5 truncate text-xs text-text-muted">Menunggu scan QR</p>
+              <p className="mt-0.5 truncate text-xs text-text-muted">Menunggu pindai QR</p>
             </div>
             <Badge variant="warning">
               <span className="animate-pulse" aria-hidden>
                 ●
               </span>
-              Connecting
+              Menghubungkan
             </Badge>
           </div>
 
           <div className="grid gap-3 pt-1 sm:grid-cols-2">
             {}
             <div className="rounded-sm border border-border bg-surface-subtle/60 p-3.5">
-              <p className="text-xs font-medium text-text-secondary">Rules aktif</p>
+              <p className="text-xs font-medium text-text-secondary">Aturan aktif</p>
               <ul className="mt-2 space-y-1.5 text-xs text-text-muted">
                 <li className="flex items-center gap-2">
                   <span className="h-1 w-1 rounded-full bg-info" aria-hidden />
-                  Auto-read grup promo
+                  Baca otomatis grup promo
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="h-1 w-1 rounded-full bg-success" aria-hidden />
-                  Balas &ldquo;ready&rdquo; ke pelanggan
+                  Balas &ldquo;harga&rdquo; ke pelanggan
                 </li>
               </ul>
             </div>
@@ -59,7 +59,7 @@ export function HeroPreview() {
             <div className="rounded-sm border border-border bg-surface-subtle/60 p-3.5">
               <p className="text-xs font-medium text-text-secondary">Aktivitas terbaru</p>
               <ul className="mt-2 space-y-1.5 text-xs text-text-muted">
-                <li>Auto reply terkirim ke Grup Promo</li>
+                <li>Balasan otomatis terkirim ke Grup Promo</li>
                 <li>Pesan diterima dari Pelanggan</li>
               </ul>
             </div>
@@ -73,14 +73,14 @@ export function HeroPreview() {
           <QrCode className="h-5 w-5" />
         </span>
         <div>
-          <p className="text-xs font-medium text-text-primary">Scan QR</p>
-          <p className="text-xs text-text-muted">Connect dalam hitungan detik</p>
+          <p className="text-xs font-medium text-text-primary">Pindai QR</p>
+          <p className="text-xs text-text-muted">Terhubung dalam hitungan detik</p>
         </div>
       </div>
 
       <div className="absolute -right-3 -top-5 hidden items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text-primary shadow-md sm:flex lg:-right-8">
         <Plus className="h-3.5 w-3.5 text-primary" aria-hidden />
-        Tambah device
+        Tambah perangkat
       </div>
     </div>
   );

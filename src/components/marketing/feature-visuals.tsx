@@ -10,7 +10,7 @@ export function DeviceStackVisual() {
           <QrCode className="h-12 w-12 text-text-muted" strokeWidth={1.5} />
         </div>
         <p className="mt-3 text-center text-xs font-medium text-text-secondary">
-          Scan untuk connect
+          Pindai untuk terhubung
         </p>
       </div>
 
@@ -22,15 +22,15 @@ export function DeviceStackVisual() {
           </span>
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-text-primary">Toko Online</p>
-            <p className="text-xs text-text-muted">Device utama</p>
+            <p className="text-xs text-text-muted">Perangkat utama</p>
           </div>
         </div>
         <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
           <span className="text-xs text-text-muted">Status</span>
-          <Badge variant="success">Connected</Badge>
+          <Badge variant="success">Terhubung</Badge>
         </div>
         <div className="mt-2 flex items-center justify-between">
-          <span className="text-xs text-text-muted">Rules aktif</span>
+          <span className="text-xs text-text-muted">Aturan aktif</span>
           <span className="font-mono text-xs text-text-secondary">2</span>
         </div>
       </div>

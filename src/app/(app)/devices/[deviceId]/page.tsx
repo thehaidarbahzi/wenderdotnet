@@ -21,6 +21,8 @@ import {
   Plus,
   Pencil,
   AtSign,
+  AlertTriangle,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +30,7 @@ import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { Toggle } from "@/components/ui/toggle";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
 import { toast } from "sonner";
 import type { DeviceAutomation } from "@/types";
 
@@ -97,6 +100,24 @@ export default function DeviceDetailPage() {
   const [groupSearch, setGroupSearch] = useState("");
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
 
+  const [importModal, setImportModal] = useState(false);
+  const [importDevices, setImportDevices] = useState<
+    Array<{ id: string; display_name: string; state: string }>
+  >([]);
+  const [importDevicesLoading, setImportDevicesLoading] = useState(false);
+  const [importSourceId, setImportSourceId] = useState("");
+  const [importSourceAutomations, setImportSourceAutomations] = useState<
+    DeviceAutomation[]
+  >([]);
+  const [importSourceLoading, setImportSourceLoading] = useState(false);
+  const [importSelectedIds, setImportSelectedIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [importing, setImporting] = useState(false);
+
+  const isLoggedIn = status?.is_logged_in ?? device?.state === "logged_in";
+  const isMenghubungkan = status?.state === "connecting" || device?.state === "connecting";
+
   const fetchDevice = useCallback(async () => {
     try {
       const res = await fetch("/api/devices");
@@ -110,12 +131,12 @@ export default function DeviceDetailPage() {
           }>
         ).find((d) => d.id === deviceId);
         if (found) {
-          setDevice({
+          setDevice((prev) => ({
             id: found.id,
             display_name: found.display_name,
             state: found.state,
-            jid: "",
-          });
+            jid: prev?.jid ?? "",
+          }));
         }
       }
       const sRes = await fetch(`/api/devices/${deviceId}/status`);
@@ -136,8 +157,8 @@ export default function DeviceDetailPage() {
           prev
             ? {
                 ...prev,
-                state: s.state ?? prev.state,
-                jid: s.jid ?? s.results?.jid ?? prev.jid,
+                state: s.state || prev.state,
+                jid: s.jid || s.results?.jid || prev.jid || "",
               }
             : prev,
         );
@@ -175,7 +196,7 @@ export default function DeviceDetailPage() {
       interval = setInterval(() => {
         if (document.visibilityState === "hidden") return;
         fetchDevice();
-        fetchAutomations();
+        if (isLoggedIn) fetchAutomations();
       }, 5000);
     };
 
@@ -189,7 +210,7 @@ export default function DeviceDetailPage() {
       if (interval) clearInterval(interval);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [fetchDevice, fetchAutomations]);
+  }, [fetchDevice, fetchAutomations, isLoggedIn]);
 
   useEffect(() => {
     if (!connectModal) return;
@@ -213,11 +234,13 @@ export default function DeviceDetailPage() {
         setGroupsFetched(true);
       } else {
         if (res.status === 400)
-          toast.error(data.error || "Device not connected untuk ambil grup");
-        else toast.error(data.error || "Gagal ambil daftar grup");
+          toast.error(
+            data.error || "Perangkat belum terhubung untuk ambil grup",
+          );
+        else toast.error(data.error || "Gagal mengambil daftar grup");
       }
     } catch {
-      toast.error("Gagal ambil grup");
+      toast.error("Gagal mengambil grup");
     } finally {
       setGroupsLoading(false);
     }
@@ -237,14 +260,131 @@ export default function DeviceDetailPage() {
     [filteredGroups],
   );
 
+  const fetchImportDevices = useCallback(async () => {
+    setImportDevicesLoading(true);
+    try {
+      const res = await fetch("/api/devices");
+      if (res.ok) {
+        const data = await res.json();
+        const list =
+          (data.devices as Array<{
+            id: string;
+            display_name: string;
+            state: string;
+          }>) || [];
+        setImportDevices(list.filter((d) => d.id !== deviceId));
+      }
+    } catch {
+      toast.error("Gagal mengambil daftar perangkat");
+    } finally {
+      setImportDevicesLoading(false);
+    }
+  }, [deviceId]);
+
+  const fetchImportSourceAutomations = useCallback(async (sourceId: string) => {
+    if (!sourceId) return;
+    setImportSourceLoading(true);
+    setImportSourceAutomations([]);
+    setImportSelectedIds(new Set());
+    try {
+      const res = await fetch(`/api/devices/${sourceId}/automations`);
+      const data = await res.json();
+      if (res.ok) {
+        setImportSourceAutomations(data.automations ?? []);
+      } else {
+        toast.error(data.error || "Gagal mengambil automasi sumber");
+      }
+    } catch {
+      toast.error("Gagal mengambil automasi sumber");
+    } finally {
+      setImportSourceLoading(false);
+    }
+  }, []);
+
+  const handleImport = useCallback(async () => {
+    if (importing || importSelectedIds.size === 0 || !importSourceId) return;
+    setImporting(true);
+    let success = 0;
+    let skipped = 0;
+    for (const auto of importSourceAutomations.filter((a) =>
+      importSelectedIds.has(a.id),
+    )) {
+      const payload = {
+        name: auto.name,
+        trigger_category: auto.trigger_category,
+        pattern: auto.pattern,
+        reply: auto.reply,
+        is_reply: auto.is_reply,
+        mentions: auto.mentions || undefined,
+        duration: auto.duration,
+        is_forwarded: auto.is_forwarded,
+        target_type: auto.target_type || undefined,
+        target_jid: auto.target_jid || null,
+      };
+      try {
+        let res = await fetch(`/api/devices/${deviceId}/automations`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        let data: unknown = null;
+        try {
+          data = await res.json();
+        } catch {}
+        if (res.status === 409) {
+          const retryPayload = { ...payload, name: `${auto.name} (salinan)` };
+          res = await fetch(`/api/devices/${deviceId}/automations`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(retryPayload),
+          });
+          if (res.ok) success++;
+          else skipped++;
+        } else if (res.ok) {
+          success++;
+        } else {
+          const err = (data as { error?: string })?.error || "";
+          if (err.includes("sudah ada")) skipped++;
+          else skipped++;
+        }
+      } catch {
+        skipped++;
+      }
+    }
+    if (success > 0) {
+      toast.success(
+        `${success} automasi diimpor${skipped > 0 ? `, ${skipped} dilewati karena sudah ada` : ""}`,
+      );
+      setImportModal(false);
+      setImportSourceId("");
+      setImportSourceAutomations([]);
+      setImportSelectedIds(new Set());
+      fetchAutomations();
+    } else {
+      toast.error(
+        skipped > 0
+          ? "Tidak ada yang diimpor. Semua sudah ada di perangkat ini."
+          : "Gagal mengimpor automasi",
+      );
+    }
+    setImporting(false);
+  }, [
+    importing,
+    importSelectedIds,
+    importSourceId,
+    importSourceAutomations,
+    deviceId,
+    fetchAutomations,
+  ]);
+
   const saveAutomation = async () => {
     if (autoSaving) return;
     const errs: Record<string, string> = {};
-    if (!autoForm.name.trim()) errs.name = "Name is required";
-    if (!autoForm.pattern.trim()) errs.pattern = "Pattern is required";
-    if (!autoForm.reply.trim()) errs.reply = "Reply is required";
+    if (!autoForm.name.trim()) errs.name = "Nama wajib diisi";
+    if (!autoForm.pattern.trim()) errs.pattern = "Pola wajib diisi";
+    if (!autoForm.reply.trim()) errs.reply = "Balasan wajib diisi";
     if (autoForm.target_type === "group" && autoForm.target_jids.length === 0)
-      errs.target = "Select at least one group";
+      errs.target = "Pilih minimal satu grup";
     if (Object.keys(errs).length) {
       setAutoErrors(errs);
       if (errs.name) setAutoStep(1);
@@ -283,8 +423,8 @@ export default function DeviceDetailPage() {
           },
         );
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || "Gagal update");
-        toast.success("Automation diperbarui");
+        if (!res.ok) throw new Error(data.error || "Gagal memperbarui");
+        toast.success("Automasi diperbarui");
       } else {
         const res = await fetch(`/api/devices/${deviceId}/automations`, {
           method: "POST",
@@ -292,18 +432,18 @@ export default function DeviceDetailPage() {
           body: JSON.stringify(payload),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || "Gagal buat automasi");
+        if (!res.ok) throw new Error(data.error || "Gagal membuat automasi");
         const count = data.automations?.length ?? 1;
         toast.success(
           count > 1
             ? `${count} automasi dibuat (1 per grup)`
-            : "Automation ditambahkan",
+            : "Automasi ditambahkan",
         );
       }
       setAutoModal(false);
       fetchAutomations();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gagal simpan");
+      toast.error(err instanceof Error ? err.message : "Gagal menyimpan");
     } finally {
       setAutoSaving(false);
     }
@@ -318,12 +458,12 @@ export default function DeviceDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled: !a.enabled }),
       });
-      if (!res.ok) throw new Error("Gagal toggle");
+      if (!res.ok) throw new Error("Gagal mengganti status");
       setAutomations((prev) =>
         prev.map((x) => (x.id === a.id ? { ...x, enabled: !x.enabled } : x)),
       );
     } catch {
-      toast.error("Gagal toggle");
+      toast.error("Gagal mengganti status");
     } finally {
       setTogglingId(null);
     }
@@ -336,11 +476,11 @@ export default function DeviceDetailPage() {
       const res = await fetch(`/api/devices/${deviceId}/automations/${id}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error("Gagal hapus");
-      toast.success("Automation dihapus");
+      if (!res.ok) throw new Error("Gagal menghapus");
+      toast.success("Automasi dihapus");
       setAutomations((prev) => prev.filter((x) => x.id !== id));
     } catch {
-      toast.error("Gagal hapus");
+      toast.error("Gagal menghapus");
     } finally {
       setDeletingAutoId(null);
     }
@@ -353,16 +493,16 @@ export default function DeviceDetailPage() {
       const data = await res.json();
       const link = data.qr_link || data.results?.qr_link || "";
       if (link) setQrUrl(link);
-      else toast.error(data.error || "QR not available");
+      else toast.error(data.error || "QR tidak tersedia");
     } catch {
-      toast.error("Gagal ambil QR");
+      toast.error("Gagal mengambil QR");
     } finally {
       setQrLoading(false);
     }
   };
   const fetchPairCode = async (id: string, p: string) => {
     if (!p.trim()) {
-      toast.error("Phone number wajib");
+      toast.error("Nomor HP wajib diisi");
       return;
     }
     setPairCodeLoading(true);
@@ -376,7 +516,7 @@ export default function DeviceDetailPage() {
       const code = data.pair_code || data.results?.pair_code || "";
       if (code) {
         setPairCode(code);
-        toast.success("Code didapat");
+        toast.success("Kode didapat");
       } else toast.error(data.error || "Gagal");
     } catch {
       toast.error("Gagal");
@@ -402,24 +542,44 @@ export default function DeviceDetailPage() {
 
   if (loadingDevice)
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-64 w-full" />
+      <div className="space-y-6">
+        <Skeleton className="h-4 w-28" />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-3">
+            <Skeleton className="hidden h-12 w-12 shrink-0 rounded-sm sm:block" />
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-36" />
+              <Skeleton className="h-3 w-48" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+          </div>
+          <Skeleton className="h-11 w-full sm:w-40 rounded-sm" />
+        </div>
+        <Skeleton className="h-10 w-full rounded-sm" />
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="rounded-sm border border-border bg-surface p-4"
+            >
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="mt-3 h-4 w-24" />
+              <Skeleton className="mt-2 h-3 w-full" />
+            </div>
+          ))}
+        </div>
+        <Skeleton className="h-32 w-full rounded-sm" />
       </div>
     );
   if (!device)
     return (
       <div className="text-center py-12">
-        <p className="text-text-muted">Device not found</p>
+        <p className="text-text-muted">Perangkat tidak ditemukan</p>
         <Link href="/devices" className="text-primary text-sm">
-          Back
+          Kembali
         </Link>
       </div>
     );
-
-  const isLoggedIn = status?.is_logged_in ?? device.state === "logged_in";
-  const isConnecting =
-    status?.state === "connecting" || device.state === "connecting";
 
   return (
     <div className="space-y-6">
@@ -428,33 +588,28 @@ export default function DeviceDetailPage() {
         className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to Devices
+        Kembali ke Perangkat
       </Link>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-3">
-          <div className="hidden h-12 w-12 place-items-center rounded-sm border border-border bg-surface-subtle sm:grid">
-            <Smartphone className="h-6 w-6 text-text-muted" />
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex gap-4">
+          <div className="hidden h-12 w-12 shrink-0 place-items-center rounded-sm border border-border bg-surface-subtle text-text-muted sm:grid">
+            <Smartphone className="h-6 w-6" />
           </div>
-          <div>
-            <h1 className="text-xl font-semibold text-text-primary flex items-center gap-2">
-              {device.display_name}{" "}
+          <div className="min-w-0 space-y-1.5">
+            <h1 className="flex flex-wrap items-center gap-2 text-2xl font-bold tracking-tight text-text-primary">
+              <span className="truncate">{device.display_name}</span>
               <Badge
                 variant={
-                  isLoggedIn ? "success" : isConnecting ? "warning" : "default"
+                  isLoggedIn ? "success" : isMenghubungkan ? "warning" : "default"
                 }
               >
-                {isLoggedIn
-                  ? "Connected"
-                  : isConnecting
-                    ? "Connecting"
-                    : "Disconnected"}
+                {isLoggedIn ? "Terhubung" : isMenghubungkan ? "Menghubungkan" : "Terputus"}
               </Badge>
             </h1>
-            <p className="font-mono text-xs text-text-muted">{device.id}</p>
-            {device.jid && (
-              <p className="text-xs text-text-secondary">{device.jid}</p>
-            )}
+            <p className="font-mono text-sm leading-none tracking-wide text-slate-600 dark:text-slate-400 truncate">
+              {device.id}
+            </p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -468,7 +623,7 @@ export default function DeviceDetailPage() {
               className="shadow-sm"
             >
               <Plug className="h-4 w-4" />
-              Connect WhatsApp
+              Hubungkan WhatsApp
             </Button>
           ) : (
             <Button
@@ -484,13 +639,13 @@ export default function DeviceDetailPage() {
                   });
                   if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
-                    throw new Error(err.error || "Gagal disconnect");
+                    throw new Error(err.error || "Gagal memutus");
                   }
-                  toast.success("Disconnected");
+                  toast.success("Terputus");
                   fetchDevice();
                 } catch (err) {
                   toast.error(
-                    err instanceof Error ? err.message : "Gagal disconnect",
+                    err instanceof Error ? err.message : "Gagal memutus",
                   );
                 } finally {
                   setDetailDisconnecting(false);
@@ -498,7 +653,7 @@ export default function DeviceDetailPage() {
               }}
             >
               <WifiOff className="h-4 w-4" />
-              Disconnect
+              Putuskan
             </Button>
           )}
         </div>
@@ -513,7 +668,7 @@ export default function DeviceDetailPage() {
             onClick={() => setTab(t)}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px ${tab === t ? "border-primary text-primary" : "border-transparent text-text-muted hover:text-text-primary"}`}
           >
-            {t === "overview" ? "Overview" : "Automation"}
+            {t === "overview" ? "Ringkasan" : "Automasi"}
           </button>
         ))}
       </div>
@@ -524,11 +679,11 @@ export default function DeviceDetailPage() {
             <div className="rounded-sm border border-amber-200 bg-amber-50 p-5 dark:border-amber-900/30 dark:bg-amber-950/20">
               <h3 className="flex items-center gap-2 text-sm font-semibold text-amber-800 dark:text-amber-300">
                 <WifiOff className="h-4 w-4" />
-                Device not connected
+                Perangkat belum terhubung
               </h3>
               <p className="mt-1 text-sm leading-relaxed text-amber-700 dark:text-amber-200/80">
-                Connect the device to start receiving messages. Click{" "}
-                <b>Connect WhatsApp</b> above and follow the phone instructions.
+                Hubungkan perangkat untuk mulai menerima pesan. Klik{" "}
+                <b>Hubungkan WhatsApp</b> di atas dan ikuti petunjuk di ponsel.
               </p>
               <Button
                 onClick={openConnect}
@@ -538,29 +693,29 @@ export default function DeviceDetailPage() {
                 loading={detailConnectLoading}
               >
                 <Plug className="h-4 w-4" />
-                Connect now
+                Hubungkan sekarang
               </Button>
             </div>
           ) : automations.length === 0 ? (
-            <div className="rounded-sm border border-primary/20 bg-primary/5 p-5">
-              <h3 className="flex items-center gap-2 text-sm font-semibold text-primary">
+            <div className="rounded-sm border border-primary/20 bg-primary-subtle dark:bg-[#1E4D3B]/20 p-5">
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-[#1E4D3B] dark:text-[#6EE7B7]">
                 <Zap className="h-4 w-4" />
-                Ready for automation
+                Siap untuk automasi
               </h3>
               <p className="mt-1 text-sm leading-relaxed text-text-secondary">
-                Device is <b>connected</b>. Create your first automation to
-                auto-reply.
+                Perangkat sudah <b>terhubung</b>. Buat automasi pertama agar
+                membalas otomatis.
               </p>
               <ol className="mt-3 list-decimal list-inside space-y-1 text-sm text-text-secondary">
                 <li>
-                  Go to the <b>Automation</b> tab above
+                  Buka tab <b>Automasi</b> di atas
                 </li>
                 <li>
-                  Click <b>Add</b> → fill <i>Name</i>, <i>Pattern</i> (“price”),{" "}
-                  <i>Reply</i>
+                  Klik <b>Tambah</b> → isi <i>Nama</i>, <i>Pola</i> (“harga”),{" "}
+                  <i>Balas</i>
                 </li>
                 <li>
-                  Choose <i>Group</i> for group-specific or <i>All</i>
+                  Pilih <i>Grup</i> untuk khusus grup atau <i>Semua</i>
                 </li>
               </ol>
               <Button
@@ -570,65 +725,31 @@ export default function DeviceDetailPage() {
                 className="mt-3"
               >
                 <Plus className="h-4 w-4" />
-                Create first automation
+                Buat automasi pertama
               </Button>
             </div>
-          ) : (
-            <div className="rounded-sm border border-success/20 bg-success/5 p-4 flex items-center gap-3">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-success text-white">
-                <Signal className="h-4 w-4" />
-              </span>
-              <div>
-                <p className="text-sm font-medium text-success-strong">
-                  Device active and automations running
-                </p>
-                <p className="text-xs text-text-muted">
-                  {automations.filter((a) => a.enabled).length} automations
-                  active • {automations.length} total
-                </p>
-              </div>
-            </div>
-          )}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-sm border border-border bg-surface p-4">
-              <p className="text-xs uppercase tracking-wider text-text-muted">
-                Status
+          ) : null}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <StatCard
+              label="Total automasi"
+              value={automations.length}
+              icon={<Hash className="h-5 w-5" />}
+              tone="default"
+              className="p-5"
+            />
+            <StatCard
+              label="AUTOMASI AKTIF"
+              value={automations.filter((a) => a.enabled).length}
+              icon={<Zap className="h-5 w-5" />}
+              tone="success"
+              className="p-5"
+            />
+            <div className="rounded-sm border border-border bg-surface p-5 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+                Nomor Perangkat
               </p>
-              <p className="mt-2 font-medium flex items-center gap-2 text-sm">
-                {isLoggedIn ? (
-                  <Signal className="h-4 w-4 text-success" />
-                ) : (
-                  <WifiOff className="h-4 w-4 text-error" />
-                )}
-                {isLoggedIn
-                  ? "Connected: ready"
-                  : isConnecting
-                    ? "Connecting..."
-                    : "Disconnected"}
-              </p>
-              <p className="text-xs text-text-muted mt-1">
-                {isLoggedIn
-                  ? "Incoming messages will be processed"
-                  : "Connect to start"}
-              </p>
-            </div>
-            <div className="rounded-sm border border-border bg-surface p-4">
-              <p className="text-xs uppercase tracking-wider text-text-muted">
-                Device ID
-              </p>
-              <p className="font-mono text-xs mt-2 break-all bg-surface-subtle rounded px-2 py-1.5 border border-border">
-                {device.id}
-              </p>
-            </div>
-            <div className="rounded-sm border border-border bg-surface p-4">
-              <p className="text-xs uppercase tracking-wider text-text-muted">
-                WhatsApp JID
-              </p>
-              <p className="font-mono text-xs mt-2 break-all bg-surface-subtle rounded px-2 py-1.5 border border-border">
-                {device.jid || "-"}
-              </p>
-              <p className="text-xs text-text-muted mt-1">
-                {device.jid ? "Connected number" : "Will appear after QR scan"}
+              <p className="mt-2 font-mono text-xs break-all bg-surface-subtle rounded-sm px-2 py-1.5 border border-border">
+                {device.jid ? device.jid.split("@")[0].split(":")[0] : "-"}
               </p>
             </div>
           </div>
@@ -637,18 +758,38 @@ export default function DeviceDetailPage() {
 
       {tab === "automasi" && (
         <div className="space-y-5">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold tracking-tight text-text-primary">
-              Automations for this device
-            </h3>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
+              <h3 className="font-semibold tracking-tight text-text-primary">
+                Automasi untuk perangkat ini
+              </h3>
               {autoLoading && automations.length > 0 && (
                 <span className="text-xs text-text-muted flex items-center gap-1">
                   <RefreshCw className="h-3 w-3 animate-spin" />
-                  Loading
+                  Memuat
                 </span>
               )}
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center w-full sm:w-auto">
               <Button
+                variant="secondary"
+                className="w-full sm:w-auto justify-center"
+                onClick={() => {
+                  setImportModal(true);
+                  setImportSourceId("");
+                  setImportSourceAutomations([]);
+                  setImportSelectedIds(new Set());
+                  fetchImportDevices();
+                }}
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">
+                  Impor dari perangkat lain
+                </span>
+                <span className="sm:hidden">Impor</span>
+              </Button>
+              <Button
+                className="w-full sm:w-auto justify-center"
                 onClick={() => {
                   setEditingAuto(null);
                   setAutoForm({
@@ -669,16 +810,82 @@ export default function DeviceDetailPage() {
                 }}
               >
                 <Plus className="h-4 w-4" />
-                Add automation
+                Tambah automasi
               </Button>
             </div>
           </div>
+          {!isLoggedIn && (
+            <div className="rounded-sm border border-amber-200 bg-amber-50 p-5 dark:border-amber-900/30 dark:bg-amber-950/20">
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-amber-800 dark:text-amber-300">
+                <WifiOff className="h-4 w-4" />
+                Perangkat belum terhubung
+              </h3>
+              <p className="mt-1 text-sm leading-relaxed text-amber-700 dark:text-amber-200/80">
+                Hubungkan perangkat untuk mulai menerima pesan. Klik{" "}
+                <b>Hubungkan WhatsApp</b> di atas dan ikuti petunjuk di ponsel.
+              </p>
+              <Button
+                onClick={openConnect}
+                variant="primary"
+                size="sm"
+                className="mt-3"
+                loading={detailConnectLoading}
+              >
+                <Plug className="h-4 w-4" />
+                Hubungkan sekarang
+              </Button>
+            </div>
+          )}
           {autoLoading && automations.length === 0 ? (
-            <Skeleton className="h-32 w-full" />
+            <div className="grid gap-4">
+              {[1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="rounded-sm border border-border bg-surface p-5"
+                >
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0 flex-1 space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Skeleton className="h-5 w-32" />
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                        <Skeleton className="h-5 w-14 rounded-sm" />
+                      </div>
+                      <Skeleton className="h-16 w-full rounded-sm" />
+                      <div className="flex flex-wrap gap-1.5">
+                        <Skeleton className="h-6 w-20 rounded-full" />
+                        <Skeleton className="h-6 w-16 rounded-full" />
+                      </div>
+                    </div>
+                    <div className="flex w-full flex-col gap-2 lg:w-40 lg:shrink-0">
+                      <Skeleton className="h-9 w-full rounded-sm" />
+                      <Skeleton className="h-9 w-full rounded-sm" />
+                      <Skeleton className="h-9 w-full rounded-sm" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : automations.length === 0 ? (
-            <div className="rounded-sm border border-dashed border-border p-8 text-center text-sm text-text-muted">
-              No automations yet. Click Add to create one. Trigger: prefix /
-              contains / exact / regex, then reply.
+            <div className="rounded-sm border border-dashed border-border p-8 text-center">
+              <p className="text-sm text-text-muted">
+                Belum ada automasi. Klik Tambah untuk membuat. Pemicu: awalan /
+                mengandung / sama persis / regex, lalu balasan.
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="mt-4"
+                onClick={() => {
+                  setImportModal(true);
+                  setImportSourceId("");
+                  setImportSourceAutomations([]);
+                  setImportSelectedIds(new Set());
+                  fetchImportDevices();
+                }}
+              >
+                <Download className="h-4 w-4" />
+                Impor dari perangkat lain
+              </Button>
             </div>
           ) : (
             <div className="grid gap-4">
@@ -688,18 +895,18 @@ export default function DeviceDetailPage() {
                     ? a.target_jid
                       ? groups.find((g) => g.JID === a.target_jid)?.Name ||
                         a.target_jid
-                      : "All groups"
+                      : "Semua grup"
                     : a.target_type === "private"
-                      ? "Private only"
-                      : "All chats";
+                      ? "Hanya privat"
+                      : "Semua chat";
                 const durationLabel =
                   a.duration === 0
-                    ? "Permanent"
+                    ? "Permanen"
                     : a.duration === 86400
-                      ? "24 hours"
+                      ? "24 jam"
                       : a.duration === 604800
-                        ? "7 days"
-                        : "90 days";
+                        ? "7 hari"
+                        : "90 hari";
                 return (
                   <div
                     key={a.id}
@@ -720,7 +927,7 @@ export default function DeviceDetailPage() {
                         </div>
                         <div className="rounded-sm bg-surface-subtle border border-border p-3">
                           <p className="font-mono text-xs text-text-secondary">
-                            <span className="text-text-muted">Trigger:</span> “
+                            <span className="text-text-muted">Pemicu:</span> “
                             {a.pattern}”
                           </p>
                           <p className="mt-2 text-sm leading-relaxed text-text-primary">
@@ -765,7 +972,7 @@ export default function DeviceDetailPage() {
                           onClick={() => toggleAutomation(a)}
                           className="w-full justify-center rounded-sm"
                         >
-                          {a.enabled ? "Deactivate" : "Activate"}
+                          {a.enabled ? "Nonaktifkan" : "Aktifkan"}
                         </Button>
                         <Button
                           variant="secondary"
@@ -820,25 +1027,25 @@ export default function DeviceDetailPage() {
       <Modal
         open={autoModal}
         onClose={() => !autoSaving && setAutoModal(false)}
-        title={editingAuto ? "Edit Automation" : "Add Automation"}
+        title={editingAuto ? "Ubah Automasi" : "Tambah Automasi"}
       >
         <div className="space-y-5">
           {autoStep === 1 && (
             <div className="space-y-6">
-              <div className="rounded-sm border border-primary/10 bg-primary/5 px-3 py-2.5">
-                <p className="text-xs font-medium text-primary flex items-center gap-1.5">
+              <div className="rounded-sm border border-primary/20 bg-primary-subtle dark:bg-[#1E4D3B]/20 px-3 py-2.5">
+                <p className="text-xs font-medium text-[#1E4D3B] dark:text-[#6EE7B7] flex items-center gap-1.5">
                   <Zap className="h-3.5 w-3.5" />
-                  Step 1 of 4: identity
+                  Langkah 1 dari 4: identitas
                 </p>
                 <p className="mt-1 text-xs leading-relaxed text-text-secondary">
-                  Give it a clear name so you can find it later. Customers never
-                  see this.
+                  Beri nama yang jelas agar mudah ditemukan. Pelanggan tidak
+                  melihat ini.
                 </p>
               </div>
               <div className="space-y-3">
                 <Input
-                  label="Automation name *"
-                  placeholder="Example: Reply price in Promo Group"
+                  label="Nama automasi *"
+                  placeholder="Contoh: Balas harga di Grup Promo"
                   value={autoForm.name}
                   onChange={(e) => {
                     setAutoForm({ ...autoForm, name: e.target.value });
@@ -849,7 +1056,7 @@ export default function DeviceDetailPage() {
                   autoFocus
                 />
                 <p className="text-xs text-text-muted">
-                  Use something specific like “Stock reply” instead of “Test 1”.
+                  Gunakan nama spesifik seperti “Balas stok” bukan “Tes 1”.
                 </p>
               </div>
             </div>
@@ -858,7 +1065,7 @@ export default function DeviceDetailPage() {
           {autoStep === 2 && (
             <div className="space-y-6">
               <div className="space-y-3">
-                <label className="text-sm font-medium">Trigger category</label>
+                <label className="text-sm font-medium">Kategori pemicu</label>
                 <select
                   value={autoForm.trigger_category}
                   onChange={(e) =>
@@ -870,26 +1077,44 @@ export default function DeviceDetailPage() {
                   }
                   className="h-10 w-full rounded-sm border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                 >
-                  <option value="prefix">
-                    Prefix: message starts with this
+                  <option value="prefix">Awalan: pesan diawali ini</option>
+                  <option value="contains">
+                    Mengandung: muncul di mana saja
                   </option>
-                  <option value="contains">Contains: appears anywhere</option>
-                  <option value="exact">Exact: must match exactly</option>
-                  <option value="regex">Regex: advanced pattern</option>
+                  <option value="exact">Sama persis: harus cocok persis</option>
+                  <option value="regex">Regex: pola lanjutan</option>
                 </select>
                 <p className="text-xs leading-relaxed text-text-muted">
                   {autoForm.trigger_category === "contains"
-                    ? "Safest for beginners. Pattern promo matches have promo?"
+                    ? "Paling aman untuk pemula. Pola promo cocok dengan “ada promo?”"
                     : autoForm.trigger_category === "prefix"
-                      ? "Only if message starts with it. price matches price how much but not how much price."
+                      ? "Hanya jika pesan diawali itu. “harga” cocok dengan “harga berapa” tapi tidak dengan “berapa harga”."
                       : autoForm.trigger_category === "exact"
-                        ? "Must match exactly, no extra words."
-                        : "Regular expression. Leave empty if unsure."}
+                        ? "Harus cocok persis, tanpa kata tambahan."
+                        : "Pola regex. Kosongkan jika ragu."}
                 </p>
               </div>
+              {autoForm.trigger_category === "regex" && (
+                <div className="rounded-sm border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/30 dark:bg-amber-950/20 flex gap-3">
+                  <AlertTriangle
+                    className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5"
+                    aria-hidden
+                  />
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                      Fitur lanjutan: regex
+                    </p>
+                    <p className="text-xs leading-relaxed text-amber-700 dark:text-amber-200/80">
+                      Salah tulis bisa membuat automasi tidak terpicu atau
+                      membalas semua chat. Coba “mengandung” dulu jika ragu. Uji
+                      pola di regex101 sebelum disimpan.
+                    </p>
+                  </div>
+                </div>
+              )}
               <div className="space-y-3">
                 <Input
-                  label="Trigger pattern *"
+                  label="Pola pemicu *"
                   placeholder={
                     autoForm.trigger_category === "prefix"
                       ? "price"
@@ -908,7 +1133,7 @@ export default function DeviceDetailPage() {
                   error={autoErrors.pattern}
                 />
                 <p className="text-xs text-text-muted">
-                  A short phrase. Avoid a single letter like a.
+                  Frasa pendek. Hindari satu huruf seperti a.
                 </p>
               </div>
             </div>
@@ -917,7 +1142,7 @@ export default function DeviceDetailPage() {
           {autoStep === 3 && (
             <div className="space-y-6">
               <div className="space-y-3">
-                <label className="text-sm font-medium">Apply to</label>
+                <label className="text-sm font-medium">Berlaku untuk</label>
                 <select
                   value={autoForm.target_type}
                   onChange={(e) => {
@@ -931,12 +1156,12 @@ export default function DeviceDetailPage() {
                   }}
                   className={`h-10 w-full rounded-sm border bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary ${autoErrors.target ? "border-error" : "border-border"}`}
                 >
-                  <option value="">All chats</option>
-                  <option value="group">Groups only</option>
-                  <option value="private">Private only</option>
+                  <option value="">Semua chat</option>
+                  <option value="group">Hanya grup</option>
+                  <option value="private">Hanya privat</option>
                 </select>
                 <p className="text-xs text-text-muted">
-                  Groups only keeps the reply out of private chats.
+                  Hanya grup menjaga balasan tidak masuk ke chat privat.
                 </p>
                 {autoErrors.target && (
                   <p className="text-xs text-error">{autoErrors.target}</p>
@@ -946,14 +1171,14 @@ export default function DeviceDetailPage() {
                 <div className="rounded-sm border border-border p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">
-                      Select groups ({autoForm.target_jids.length} selected)
+                      Pilih grup ({autoForm.target_jids.length} dipilih)
                     </p>
                     <Button
                       variant="secondary"
                       size="sm"
                       onClick={() => setGroupPickerOpen(!groupPickerOpen)}
                     >
-                      {groupPickerOpen ? "Close" : "Choose"}
+                      {groupPickerOpen ? "Tutup" : "Pilih"}
                     </Button>
                   </div>
                   {autoForm.target_jids.length > 0 && (
@@ -964,7 +1189,7 @@ export default function DeviceDetailPage() {
                         return (
                           <span
                             key={jid}
-                            className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary"
+                            className="inline-flex items-center gap-1 rounded-full bg-primary-subtle dark:bg-[#1E4D3B]/30 px-2.5 py-1 text-xs text-[#1E4D3B] dark:text-[#6EE7B7] border border-primary/20"
                             title={jid}
                           >
                             {name}{" "}
@@ -990,20 +1215,20 @@ export default function DeviceDetailPage() {
                   {groupPickerOpen && (
                     <div className="space-y-3">
                       <Input
-                        placeholder="Search groups"
+                        placeholder="Cari grup"
                         value={groupSearch}
                         onChange={(e) => setGroupSearch(e.target.value)}
                       />
                       <div className="max-h-48 overflow-auto rounded-sm border border-border divide-y">
                         {groupsLoading ? (
                           <div className="p-4 text-center text-sm text-text-muted">
-                            Loading groups
+                            Memuat grup
                           </div>
                         ) : displayedGroups.length === 0 ? (
                           <div className="p-4 text-center text-xs text-text-muted">
                             {groups.length === 0
-                              ? "No groups found. Connect device first."
-                              : "No results"}
+                              ? "Tidak ada grup. Hubungkan perangkat dulu."
+                              : "Tidak ada hasil"}
                           </div>
                         ) : (
                           displayedGroups.map((g) => (
@@ -1038,8 +1263,8 @@ export default function DeviceDetailPage() {
                       </div>
                       {filteredGroups.length > 100 && (
                         <p className="text-xs text-text-muted">
-                          Showing 100 of {filteredGroups.length}. Use search to
-                          narrow.
+                          Menampilkan 100 dari {filteredGroups.length}. Use
+                          search to narrow.
                         </p>
                       )}
                       <div className="flex gap-2">
@@ -1055,7 +1280,7 @@ export default function DeviceDetailPage() {
                             })
                           }
                         >
-                          Select first 20
+                          Pilih 20 pertama
                         </Button>
                         <Button
                           size="sm"
@@ -1064,22 +1289,22 @@ export default function DeviceDetailPage() {
                             setAutoForm({ ...autoForm, target_jids: [] })
                           }
                         >
-                          Clear
+                          Bersihkan
                         </Button>
                       </div>
                     </div>
                   )}
                   <p className="text-xs text-text-muted">
-                    Leave empty to apply to all groups. Selecting several
-                    creates one automation per group.
+                    Kosongkan untuk berlaku ke semua grup. Memilih beberapa akan
+                    membuat satu automasi per grup.
                   </p>
                 </div>
               ) : (
                 <div className="rounded-sm border border-dashed border-border bg-surface-subtle p-5 text-center">
                   <p className="text-sm text-text-secondary">
                     {autoForm.target_type === ""
-                      ? "Reply will be sent to any matching chat."
-                      : "Only private chats will be replied to."}
+                      ? "Balasan akan dikirim ke chat apa pun yang cocok."
+                      : "Hanya chat privat yang akan dibalas."}
                   </p>
                 </div>
               )}
@@ -1089,7 +1314,9 @@ export default function DeviceDetailPage() {
           {autoStep === 4 && (
             <div className="space-y-6">
               <div className="space-y-3">
-                <label className="text-sm font-medium">Reply message <span className="text-error">*</span></label>
+                <label className="text-sm font-medium">
+                  Pesan balasan <span className="text-error">*</span>
+                </label>
                 <textarea
                   value={autoForm.reply}
                   onChange={(e) => {
@@ -1098,13 +1325,13 @@ export default function DeviceDetailPage() {
                       setAutoErrors((prev) => ({ ...prev, reply: "" }));
                   }}
                   className={`min-h-[110px] w-full rounded-sm border bg-surface px-3 py-2.5 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary ${autoErrors.reply ? "border-error" : "border-border"}`}
-                  placeholder="Hi, we have stock. Price is 25k, check the catalog"
+                  placeholder="Hai, stok tersedia. Harga 25rb, cek katalog ya"
                 />
                 {autoErrors.reply ? (
                   <p className="text-xs text-error">{autoErrors.reply}</p>
                 ) : (
                   <p className="text-xs text-text-muted">
-                    Write as if replying manually. Emoji allowed.
+                    Tulis seperti membalas manual. Emoji boleh.
                   </p>
                 )}
               </div>
@@ -1119,10 +1346,10 @@ export default function DeviceDetailPage() {
                     className="mt-1 rounded-sm"
                   />
                   <span className="text-sm">
-                    <span className="font-medium">Quote original</span>
+                    <span className="font-medium">Kutip pesan asli</span>
                     <br />
                     <span className="text-xs text-text-muted">
-                      Reply as a quoted thread.
+                      Balas sebagai kutipan.
                     </span>
                   </span>
                 </label>
@@ -1139,10 +1366,12 @@ export default function DeviceDetailPage() {
                     className="mt-1 rounded-sm"
                   />
                   <span className="text-sm">
-                    <span className="font-medium">Mark as forwarded</span>
+                    <span className="font-medium">
+                      Tandai sebagai diteruskan
+                    </span>
                     <br />
                     <span className="text-xs text-text-muted">
-                      Show Forwarded label.
+                      Tampilkan label Diteruskan.
                     </span>
                   </span>
                 </label>
@@ -1150,7 +1379,7 @@ export default function DeviceDetailPage() {
               {autoForm.target_type === "group" && (
                 <div className="space-y-3">
                   <Input
-                    label="Mention"
+                    label="Sebut"
                     placeholder="@everyone or 628123456789"
                     value={autoForm.mentions}
                     onChange={(e) =>
@@ -1158,14 +1387,12 @@ export default function DeviceDetailPage() {
                     }
                   />
                   <p className="text-xs text-text-muted">
-                    Groups only. Leave empty if no mention is needed.
+                    Hanya grup. Kosongkan jika tidak perlu menyebut.
                   </p>
                 </div>
               )}
               <div className="space-y-3">
-                <label className="text-sm font-medium">
-                  Disappearing message
-                </label>
+                <label className="text-sm font-medium">Pesan menghilang</label>
                 <select
                   value={autoForm.duration}
                   onChange={(e) =>
@@ -1176,22 +1403,22 @@ export default function DeviceDetailPage() {
                   }
                   className="h-10 w-full rounded-sm border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                 >
-                  <option value={0}>Permanent</option>
-                  <option value={86400}>24 hours</option>
-                  <option value={604800}>7 days</option>
-                  <option value={7776000}>90 days</option>
+                  <option value={0}>Permanen</option>
+                  <option value={86400}>24 jam</option>
+                  <option value={604800}>7 hari</option>
+                  <option value={7776000}>90 hari</option>
                 </select>
                 <p className="text-xs text-text-muted">
-                  WhatsApp disappearing message timer.
+                  Pewaktu pesan menghilang WhatsApp.
                 </p>
               </div>
               <div className="rounded-sm border border-border bg-surface p-3">
                 <p className="text-xs font-medium text-text-muted uppercase tracking-wider">
-                  Summary
+                  Ringkasan
                 </p>
                 <div className="mt-2 space-y-1 text-xs text-text-secondary">
                   <p>
-                    <span className="font-medium text-text-primary">Name:</span>{" "}
+                    <span className="font-medium text-text-primary">Nama:</span>{" "}
                     {autoForm.name || "-"}
                   </p>
                   <p>
@@ -1205,10 +1432,10 @@ export default function DeviceDetailPage() {
                       Target:
                     </span>{" "}
                     {autoForm.target_type === "group"
-                      ? `${autoForm.target_jids.length ? autoForm.target_jids.map((j) => groups.find((g) => g.JID === j)?.Name || j).join(", ") : "all groups"}`
+                      ? `${autoForm.target_jids.length ? autoForm.target_jids.map((j) => groups.find((g) => g.JID === j)?.Name || j).join(", ") : "semua grup"}`
                       : autoForm.target_type === "private"
-                        ? "private"
-                        : "all chats"}
+                        ? "privat"
+                        : "semua chat"}
                   </p>
                   <p>
                     <span className="font-medium text-text-primary">
@@ -1231,7 +1458,7 @@ export default function DeviceDetailPage() {
               }
               disabled={autoSaving}
             >
-              {autoStep === 1 ? "Cancel" : "Back"}
+              {autoStep === 1 ? "Batal" : "Kembali"}
             </Button>
             <div className="flex gap-2">
               {autoStep < 4 ? (
@@ -1239,15 +1466,15 @@ export default function DeviceDetailPage() {
                   onClick={() => {
                     const nextErrors: Record<string, string> = {};
                     if (autoStep === 1 && !autoForm.name.trim())
-                      nextErrors.name = "Name is required";
+                      nextErrors.name = "Nama wajib diisi";
                     if (autoStep === 2 && !autoForm.pattern.trim())
-                      nextErrors.pattern = "Pattern is required";
+                      nextErrors.pattern = "Pola wajib diisi";
                     if (
                       autoStep === 3 &&
                       autoForm.target_type === "group" &&
                       autoForm.target_jids.length === 0
                     )
-                      nextErrors.target = "Select at least one group";
+                      nextErrors.target = "Pilih minimal satu grup";
                     if (Object.keys(nextErrors).length) {
                       setAutoErrors(nextErrors);
                       return;
@@ -1256,14 +1483,14 @@ export default function DeviceDetailPage() {
                     setAutoStep(autoStep + 1);
                   }}
                 >
-                  Next
+                  Lanjut
                 </Button>
               ) : (
                 <Button
                   onClick={() => {
                     const errs: Record<string, string> = {};
                     if (!autoForm.reply.trim())
-                      errs.reply = "Reply is required";
+                      errs.reply = "Balasan wajib diisi";
                     if (Object.keys(errs).length) {
                       setAutoErrors(errs);
                       return;
@@ -1273,10 +1500,184 @@ export default function DeviceDetailPage() {
                   loading={autoSaving}
                   disabled={autoSaving}
                 >
-                  {editingAuto ? "Save" : "Create automation"}
+                  {editingAuto ? "Simpan" : "Buat automasi"}
                 </Button>
               )}
             </div>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={importModal}
+        onClose={() => !importing && setImportModal(false)}
+        title="Impor automasi"
+      >
+        <div className="space-y-5">
+          <p className="text-sm leading-relaxed text-text-secondary">
+            Salin automasi dari perangkat lain ke perangkat ini. Pilih sumber,
+            lalu pilih automasi yang ingin dipakai di sini.
+          </p>
+          <div className="space-y-3">
+            <label className="text-sm font-medium">Perangkat sumber</label>
+            {importDevicesLoading ? (
+              <div className="rounded-sm border border-border p-4 text-center text-sm text-text-muted">
+                Memuat perangkat...
+              </div>
+            ) : importDevices.length === 0 ? (
+              <div className="rounded-sm border border-dashed border-border bg-surface-subtle p-6 text-center">
+                <p className="text-sm text-text-muted">
+                  Belum ada perangkat lain untuk diimpor.
+                </p>
+                <p className="mt-1 text-xs text-text-muted">
+                  Tambah perangkat dulu, hubungkan, lalu kembali ke sini.
+                </p>
+              </div>
+            ) : (
+              <select
+                value={importSourceId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setImportSourceId(id);
+                  if (id) fetchImportSourceAutomations(id);
+                  else {
+                    setImportSourceAutomations([]);
+                    setImportSelectedIds(new Set());
+                  }
+                }}
+                className="h-10 w-full rounded-sm border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+              >
+                <option value="">Pilih perangkat</option>
+                {importDevices.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.display_name} ·{" "}
+                    {d.state === "logged_in"
+                      ? "Terhubung"
+                      : d.state === "connecting"
+                        ? "Menghubungkan"
+                        : "Terputus"}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {importSourceId && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">
+                  Pilih automasi{" "}
+                  {importSourceAutomations.length > 0
+                    ? `(${importSelectedIds.size}/${importSourceAutomations.length} dipilih)`
+                    : ""}
+                </p>
+                {importSourceAutomations.length > 0 && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setImportSelectedIds(
+                          new Set(importSourceAutomations.map((a) => a.id)),
+                        )
+                      }
+                    >
+                      Pilih semua
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setImportSelectedIds(new Set())}
+                    >
+                      Bersihkan
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {importSourceLoading ? (
+                <div className="rounded-sm border border-border p-4 text-center text-sm text-text-muted">
+                  Memuat automasi...
+                </div>
+              ) : importSourceAutomations.length === 0 ? (
+                <div className="rounded-sm border border-dashed border-border p-6 text-center text-sm text-text-muted">
+                  Tidak ada automasi di perangkat sumber.
+                </div>
+              ) : (
+                <div className="max-h-64 overflow-auto rounded-sm border border-border divide-y">
+                  {importSourceAutomations.map((a) => {
+                    const targetLabel =
+                      a.target_type === "group"
+                        ? a.target_jid
+                          ? a.target_jid.slice(0, 18) + "…"
+                          : "Semua grup"
+                        : a.target_type === "private"
+                          ? "Hanya privat"
+                          : "Semua chat";
+                    return (
+                      <label
+                        key={a.id}
+                        className="flex items-start gap-3 p-3 hover:bg-surface-subtle cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={importSelectedIds.has(a.id)}
+                          onChange={(e) => {
+                            const next = new Set(importSelectedIds);
+                            if (e.target.checked) next.add(a.id);
+                            else next.delete(a.id);
+                            setImportSelectedIds(next);
+                          }}
+                          className="mt-1 rounded-sm"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-text-primary">
+                            {a.name}
+                          </span>
+                          <span className="mt-1 block font-mono text-xs text-text-muted truncate">
+                            “{a.pattern}” → “{a.reply.slice(0, 40)}
+                            {a.reply.length > 40 ? "…" : ""}”
+                          </span>
+                          <span className="mt-1 flex flex-wrap gap-1">
+                            <span className="inline-flex rounded-sm bg-surface-subtle border border-border px-1.5 py-0.5 text-xs text-text-muted">
+                              {a.trigger_category}
+                            </span>
+                            <span className="inline-flex rounded-sm bg-surface-subtle border border-border px-1.5 py-0.5 text-xs text-text-muted">
+                              {targetLabel}
+                            </span>
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="text-xs leading-relaxed text-text-muted">
+                Nama yang sudah ada akan disimpan sebagai “Nama (salinan)”.
+                Target grup memakai JID yang sama, jadi pastikan perangkat ini
+                juga join grup tersebut.
+              </p>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between border-t border-border pt-4">
+            <Button
+              variant="ghost"
+              onClick={() => !importing && setImportModal(false)}
+              disabled={importing}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleImport}
+              loading={importing}
+              disabled={
+                importing || importSelectedIds.size === 0 || !importSourceId
+              }
+            >
+              Impor{" "}
+              {importSelectedIds.size > 0 ? `(${importSelectedIds.size})` : ""}
+            </Button>
           </div>
         </div>
       </Modal>
@@ -1288,7 +1689,7 @@ export default function DeviceDetailPage() {
           setQrUrl("");
           setPairCode(null);
         }}
-        title="Connect WhatsApp"
+        title="Hubungkan WhatsApp"
       >
         <div className="space-y-4">
           <div
@@ -1302,7 +1703,7 @@ export default function DeviceDetailPage() {
               className={`inline-flex items-center justify-center gap-1.5 rounded-sm px-3 py-2 text-sm font-medium ${activeConnectTab === "qr" ? "bg-surface shadow border border-border" : "text-text-muted"}`}
             >
               <QrCode className="h-4 w-4" />
-              QR
+              Kode QR
             </button>
             <button
               role="tab"
@@ -1311,13 +1712,14 @@ export default function DeviceDetailPage() {
               className={`inline-flex items-center justify-center gap-1.5 rounded-sm px-3 py-2 text-sm font-medium ${activeConnectTab === "code" ? "bg-surface shadow border border-border" : "text-text-muted"}`}
             >
               <KeyRound className="h-4 w-4" />
-              Code
+              Kode Taut
             </button>
           </div>
           {activeConnectTab === "qr" ? (
             <div className="space-y-3">
               <div className="rounded-sm border border-primary/20 bg-primary/5 p-2.5 text-sm">
-                On your phone: <b>WhatsApp → Linked Devices → Link a device</b>
+                Di ponsel:{" "}
+                <b>WhatsApp → Perangkat Tertaut → Tautkan perangkat</b>
               </div>
               <div className="flex justify-center">
                 {qrLoading ? (
@@ -1330,7 +1732,7 @@ export default function DeviceDetailPage() {
                   />
                 ) : (
                   <div className="h-64 w-64 grid place-items-center border-dashed border rounded-sm text-sm text-text-muted">
-                    QR not available
+                    QR tidak tersedia
                   </div>
                 )}
               </div>
@@ -1339,7 +1741,7 @@ export default function DeviceDetailPage() {
                   variant="secondary"
                   onClick={() => setConnectModal(false)}
                 >
-                  Close
+                  Tutup
                 </Button>
                 <Button
                   variant="secondary"
@@ -1347,14 +1749,14 @@ export default function DeviceDetailPage() {
                   onClick={() => fetchQr(deviceId)}
                 >
                   <RefreshCw className="h-4 w-4" />
-                  Reload
+                  Muat Ulang
                 </Button>
               </div>
             </div>
           ) : (
             <div className="space-y-3">
               <Input
-                label="Phone number"
+                label="Nomor HP"
                 placeholder="62812xxxxxxx"
                 value={phone}
                 onChange={(e) =>
@@ -1368,12 +1770,12 @@ export default function DeviceDetailPage() {
                 className="w-full"
               >
                 <Phone className="h-4 w-4" />
-                Get code
+                Dapatkan Kode
               </Button>
               {pairCode ? (
-                <div className="rounded-sm border border-primary/20 bg-primary/5 p-4 text-center">
+                <div className="rounded-sm border border-primary/20 bg-primary-subtle dark:bg-[#1E4D3B]/20 p-4 text-center">
                   <p className="text-xs uppercase tracking-widest text-text-muted">
-                    Code
+                    Kode Taut
                   </p>
                   <p className="font-mono text-3xl font-bold tracking-[0.2em] flex items-center justify-center gap-2">
                     {pairCode}
@@ -1395,7 +1797,7 @@ export default function DeviceDetailPage() {
                 </div>
               ) : (
                 <div className="border-dashed border rounded-sm p-6 text-center text-sm text-text-muted">
-                  No code yet
+                  Belum ada kode
                 </div>
               )}
               <div className="flex justify-end gap-2 border-t pt-3">
@@ -1403,7 +1805,7 @@ export default function DeviceDetailPage() {
                   variant="secondary"
                   onClick={() => setConnectModal(false)}
                 >
-                  Close
+                  Tutup
                 </Button>
               </div>
             </div>

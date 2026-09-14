@@ -144,9 +144,9 @@ export default function PrivacyPage() {
                   </li>
                   <li>
                     <span className="font-semibold text-text-primary">
-                      Device.
+                      Perangkat.
                     </span>{" "}
-                    Nama device yang Anda buat, identifier slot GOWA, serta
+                    Nama perangkat yang Anda buat, pengenal slot GOWA, serta
                     identitas WhatsApp dan status koneksi setelah terhubung.
                   </li>
                   <li>
@@ -328,8 +328,8 @@ export default function PrivacyPage() {
                     icon: Clock,
                   },
                   {
-                    title: "Device",
-                    desc: "Hapus dari halaman Devices. Automasi dan log terkait ikut terhapus.",
+                    title: "Perangkat",
+                    desc: "Hapus dari halaman Perangkat. Automasi dan log terkait ikut terhapus.",
                     icon: Database,
                   },
                   {

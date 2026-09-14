@@ -50,13 +50,13 @@ export default function AuthForm() {
     const confirmPassword = form.get("confirm_password") as string;
 
     if (password !== confirmPassword) {
-      setError("Password tidak cocok");
+      setError("Kata sandi tidak cocok");
       setLoading(false);
       return;
     }
 
     if (password.length < 8) {
-      setError("Password minimal 8 karakter");
+      setError("Kata sandi minimal 8 karakter");
       setLoading(false);
       return;
     }
@@ -104,7 +104,7 @@ export default function AuthForm() {
       }
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal login dengan Google");
+      setError(err instanceof Error ? err.message : "Gagal masuk dengan Google");
       setOauthLoading(false);
     }
   }
@@ -163,8 +163,8 @@ export default function AuthForm() {
 
       {tab === "login" ? (
         <form onSubmit={handleLogin} className="space-y-4">
-          <Input name="email" label="Email" type="email" required />
-          <Input name="password" label="Password" type="password" required />
+          <Input name="email" label="Surel" type="email" required />
+          <Input name="password" label="Kata Sandi" type="password" required />
           <Button type="submit" loading={loading} disabled={loading || oauthLoading} className="w-full">
             Masuk
           </Button>
@@ -172,17 +172,17 @@ export default function AuthForm() {
       ) : (
         <form onSubmit={handleRegister} className="space-y-4">
           <Input name="full_name" label="Nama Lengkap" required />
-          <Input name="email" label="Email" type="email" required />
+          <Input name="email" label="Surel" type="email" required />
           <Input
             name="password"
-            label="Password"
+            label="Kata Sandi"
             type="password"
             required
             minLength={8}
           />
           <Input
             name="confirm_password"
-            label="Konfirmasi Password"
+            label="Konfirmasi Kata Sandi"
             type="password"
             required
           />

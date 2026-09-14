@@ -32,8 +32,33 @@ export async function GET(
     });
 
     const r = result.results ?? (result as unknown as { is_connected: boolean; is_logged_in: boolean });
-    const is_connected = (r as { is_connected: boolean }).is_connected ?? false;
-    const is_logged_in = (r as { is_logged_in: boolean }).is_logged_in ?? false;
+    let is_connected = (r as { is_connected: boolean }).is_connected ?? false;
+    let is_logged_in = (r as { is_logged_in: boolean }).is_logged_in ?? false;
+    let jid = (r as { jid?: string }).jid ?? "";
+
+    // DeviceStatusResponse tidak mengembalikan jid (hanya device_id, is_connected, is_logged_in).
+    // Ambil JID lewat /app/status dengan X-Device-Id header jika masih kosong dan sudah login.
+    if (!jid) {
+      try {
+        const appStatus = await gowa<{
+          results: { is_connected: boolean; is_logged_in: boolean; device_id: string; jid: string };
+        }>({
+          path: "/app/status",
+          device_id: deviceId,
+        });
+        const ar = appStatus.results ?? (appStatus as unknown as { jid?: string });
+        const ajid = (ar as { jid?: string }).jid;
+        if (ajid) jid = ajid;
+        // sinkronkan status jika /devices memberi false tapi /app/status true
+        if (typeof (ar as { is_connected?: boolean }).is_connected === "boolean") {
+          is_connected = (ar as { is_connected: boolean }).is_connected;
+        }
+        if (typeof (ar as { is_logged_in?: boolean }).is_logged_in === "boolean") {
+          is_logged_in = (ar as { is_logged_in: boolean }).is_logged_in;
+        }
+      } catch {}
+    }
+
     return NextResponse.json(
       {
         ...result,
@@ -41,7 +66,7 @@ export async function GET(
         is_connected,
         is_logged_in,
         device_id: (r as { device_id?: string }).device_id ?? deviceId,
-        jid: (r as { jid?: string }).jid ?? "",
+        jid,
         state: is_logged_in ? "logged_in" : is_connected ? "connecting" : "disconnected",
       },
       { headers: { "Cache-Control": "no-store, max-age=0" } }

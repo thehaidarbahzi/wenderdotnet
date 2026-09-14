@@ -10,8 +10,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { WMark } from "@/components/logo";
 
 const navLinks = [
-  { href: "/devices", label: "Devices" },
-  { href: "/logs", label: "Logs" },
+  { href: "/devices", label: "Perangkat" },
+  { href: "/logs", label: "Log" },
 ];
 
 export function Topbar() {

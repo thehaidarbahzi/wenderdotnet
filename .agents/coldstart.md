@@ -274,7 +274,7 @@ Layout: **kiri = brand panel** (bg-primary gradient, headline, capabilities list
 ### 5.4 `/devices` (Dashboard) — `src/app/(app)/devices/page.tsx`
 
 1. Topbar global (`Devices | Logs`, `Rules` dihapus 004, Topbar `rounded-sm`, logout `cursor-pointer`)
-2. `PageHeader` eyebrow `Workspace · WhatsApp` + heading `Devices` + desc + `Button` `Tambah Device` `rounded-sm`
+2. `PageHeader` `Workspace · WhatsApp` + heading `Devices` + desc + `Button` `Tambah Device` `rounded-sm`
 3. Stats `StatGrid` 3 `StatCard` `rounded-sm border bg-surface p-5 shadow-sm` (`Smartphone/Signal/WifiOff`, `tone default/success/warning`, `loading` skeleton `rounded-sm`)
 4. List header `Daftar device · N total` + `Refresh` `rounded-sm` `RefreshCw animate-spin`, grid `gap-3` kartu `rounded-sm border bg-surface p-5 hover:shadow-md`:
    - Ikon `h-11 w-11 rounded-sm border bg-surface-subtle`
@@ -314,12 +314,12 @@ Layout: **kiri = brand panel** (bg-primary gradient, headline, capabilities list
 
 ### 5.7 Komponen Marketing (`src/components/marketing/`)
 
-| Komponen         | File               | Deskripsi                                           |
-| ---------------- | ------------------ | --------------------------------------------------- |
-| `HeroPreview`    | `hero-preview.tsx` | Mockup Devices `rounded-sm border shadow-md`, stats, animasi `reveal` |
+| Komponen         | File                  | Deskripsi                                                                                                                                                                                                                  |
+| ---------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HeroPreview`    | `hero-preview.tsx`    | Mockup Devices `rounded-sm border shadow-md`, stats, animasi `reveal`                                                                                                                                                      |
 | `FeatureVisuals` | `feature-visuals.tsx` | `DeviceStackVisual`/`AutoReplyVisual`/`LogsVisual` masih ada (`rounded-sm` seragam) tapi landing `#fitur` sekarang pakai `Image` SVG `device-stack/auto-reply/logs-timeline.svg` `rounded-sm shadow-lg` + light `blur-2xl` |
-| `NewsletterForm` | `newsletter-form.tsx` | `form max-w-sm` `Input + Button rounded-sm` `h-10 flex-1 rounded-sm` → `subscribeNewsletter()` `zod` validasi, `loading+disabled` guard, success `rounded-sm border-success/30 bg-success/10` |
-| `ScrollReveal`   | `scroll-reveal.tsx` | `IntersectionObserver` `animate-reveal/up/left/right/scale` + `delay-100..500` |
+| `NewsletterForm` | `newsletter-form.tsx` | `form max-w-sm` `Input + Button rounded-sm` `h-10 flex-1 rounded-sm` → `subscribeNewsletter()` `zod` validasi, `loading+disabled` guard, success `rounded-sm border-success/30 bg-success/10`                              |
+| `ScrollReveal`   | `scroll-reveal.tsx`   | `IntersectionObserver` `animate-reveal/up/left/right/scale` + `delay-100..500`                                                                                                                                             |
 
 ---
 
@@ -346,11 +346,11 @@ Layout: **kiri = brand panel** (bg-primary gradient, headline, capabilities list
 
 ### `newsletters` (subscribe landing — publik)
 
-| Kolom        | Tipe        | Constraint                            |
-| ------------ | ----------- | ------------------------------------- |
-| `id`         | uuid        | **PK**                                |
-| `email`      | text        | NOT NULL, **UNIQUE**                  |
-| `created_at` | timestamptz | NOT NULL, default `now()`             |
+| Kolom        | Tipe        | Constraint                |
+| ------------ | ----------- | ------------------------- |
+| `id`         | uuid        | **PK**                    |
+| `email`      | text        | NOT NULL, **UNIQUE**      |
+| `created_at` | timestamptz | NOT NULL, default `now()` |
 
 _Insert publik (anon) via RLS policy `USING (true) WITH CHECK (true)`; select hanya via service key (admin). Tidak ada FK ke `auth.users` (belum login)._
 
@@ -369,25 +369,25 @@ _Insert publik (anon) via RLS policy `USING (true) WITH CHECK (true)`; select ha
 
 ### `device_automations` (per-device, menggantikan `rules`+`device_rules` global — 004)
 
-| Kolom              | Tipe        | Constraint                                                                 |
-| ------------------ | ----------- | -------------------------------------------------------------------------- |
-| `id`               | uuid        | **PK**                                                                     |
-| `user_id`          | uuid        | NOT NULL, FK → `auth.users.id` ON DELETE CASCADE                           |
-| `device_key`       | text        | NOT NULL (= device_id bot, FK implisit ke `user_devices.device_key`)       |
-| `name`             | text        | NOT NULL (mis. "Balas harga di Grup A")                                    |
+| Kolom              | Tipe        | Constraint                                                                    |
+| ------------------ | ----------- | ----------------------------------------------------------------------------- |
+| `id`               | uuid        | **PK**                                                                        |
+| `user_id`          | uuid        | NOT NULL, FK → `auth.users.id` ON DELETE CASCADE                              |
+| `device_key`       | text        | NOT NULL (= device_id bot, FK implisit ke `user_devices.device_key`)          |
+| `name`             | text        | NOT NULL (mis. "Balas harga di Grup A")                                       |
 | `trigger_category` | text        | NOT NULL, CHECK `IN ('prefix','contains','exact','regex')` DEFAULT 'contains' |
-| `trigger_type`     | text        | NOT NULL, CHECK `IN ('keyword','regex')` DEFAULT 'keyword' (derived)       |
-| `pattern`          | text        | NOT NULL                                                                   |
-| `reply`            | text        | NOT NULL                                                                   |
-| `is_reply`         | boolean     | NOT NULL DEFAULT false (`openapi.yaml:1232` `reply_message_id`)            |
-| `mentions`         | text        | NULL, comma-separated `628xxx,@everyone` (`openapi.yaml:1244`)             |
-| `duration`         | integer     | NOT NULL DEFAULT 0 CHECK `IN (0,86400,604800,7776000)` (disappearing)      |
-| `is_forwarded`     | boolean     | NOT NULL DEFAULT false                                                     |
-| `target_type`      | text        | NULL, CHECK `IN ('group','private')` (null = semua)                       |
-| `target_jid`       | text        | NULL (1 grup per row — multi grup = duplicate per `target_jid`)           |
-| `enabled`          | boolean     | NOT NULL DEFAULT true                                                      |
-| `created_at`       | timestamptz | NOT NULL DEFAULT now()                                                     |
-| `updated_at`       | timestamptz | NOT NULL DEFAULT now()                                                     |
+| `trigger_type`     | text        | NOT NULL, CHECK `IN ('keyword','regex')` DEFAULT 'keyword' (derived)          |
+| `pattern`          | text        | NOT NULL                                                                      |
+| `reply`            | text        | NOT NULL                                                                      |
+| `is_reply`         | boolean     | NOT NULL DEFAULT false (`openapi.yaml:1232` `reply_message_id`)               |
+| `mentions`         | text        | NULL, comma-separated `628xxx,@everyone` (`openapi.yaml:1244`)                |
+| `duration`         | integer     | NOT NULL DEFAULT 0 CHECK `IN (0,86400,604800,7776000)` (disappearing)         |
+| `is_forwarded`     | boolean     | NOT NULL DEFAULT false                                                        |
+| `target_type`      | text        | NULL, CHECK `IN ('group','private')` (null = semua)                           |
+| `target_jid`       | text        | NULL (1 grup per row — multi grup = duplicate per `target_jid`)               |
+| `enabled`          | boolean     | NOT NULL DEFAULT true                                                         |
+| `created_at`       | timestamptz | NOT NULL DEFAULT now()                                                        |
+| `updated_at`       | timestamptz | NOT NULL DEFAULT now()                                                        |
 
 Index `(user_id)`, `(device_key)`, `(device_key, enabled)` • **UNIQUE `(device_key, name, target_jid, pattern)`** • RLS `user_id=auth.uid() AND user_owns_device(device_key)` (via `002` helper). Grants `authenticated, service_role`. `rules`/`device_rules` sudah **DROP TOTAL** via `004_per_device_automations.sql`.
 
@@ -467,16 +467,16 @@ Merujuk ke `openapi.yaml` (root repo) — endpoint berikut dipakai di MVP. Semua
 
 80% permukaan netral + teks (kesan "clean"), 20% warna untuk aksi & status (kesan "professional").
 
-| Peran          | Warna   | Hex (Light / Dark)                                   | Keterangan                         | Status         |
-| -------------- | ------- | ---------------------------------------------------- | ---------------------------------- | -------------- |
-| Neutral (80%)  | Slate   | bg `#F8FAFC` / `#0F172A`; text `#0F172A` / `#F1F5F9` | Kontras ≥ 12:1 (AAA)               | ✅ Implemented |
-| Primary (20%)  | Emerald | `#34D399` (kedua mode)                               | Rasio ~4.5:1 di bg terang (AA)     | ✅ Implemented |
-| Primary Hover  | Emerald | `#2C9771`                                            | State hover tombol/link            | ✅ Implemented |
-| Success        | Emerald | `#34D399` / strong `#1E4D3B` (light) / `#6EE7B7` (dark) | Status connected/sukses       | ✅ Implemented |
-| Warning        | Amber   | `#D97706` (light) / `#FBBF24` (dark)                 | Status connecting/warning          | ✅ Implemented |
-| Error          | Rose    | `#E11D48` (light) / `#FB7185` (dark)                 | Error/hapus                        | ✅ Implemented |
-| Info           | Blue    | `#2563EB` (light) / `#60A5FA` (dark)                 | Badge listen/rule                  | ✅ Implemented |
-| Badge WhatsApp | Hijau   | `#25D366`                                            | Badge "connected" (konteks produk) | ✅ Implemented |
+| Peran          | Warna   | Hex (Light / Dark)                                      | Keterangan                         | Status         |
+| -------------- | ------- | ------------------------------------------------------- | ---------------------------------- | -------------- |
+| Neutral (80%)  | Slate   | bg `#F8FAFC` / `#0F172A`; text `#0F172A` / `#F1F5F9`    | Kontras ≥ 12:1 (AAA)               | ✅ Implemented |
+| Primary (20%)  | Emerald | `#34D399` (kedua mode)                                  | Rasio ~4.5:1 di bg terang (AA)     | ✅ Implemented |
+| Primary Hover  | Emerald | `#2C9771`                                               | State hover tombol/link            | ✅ Implemented |
+| Success        | Emerald | `#34D399` / strong `#1E4D3B` (light) / `#6EE7B7` (dark) | Status connected/sukses            | ✅ Implemented |
+| Warning        | Amber   | `#D97706` (light) / `#FBBF24` (dark)                    | Status connecting/warning          | ✅ Implemented |
+| Error          | Rose    | `#E11D48` (light) / `#FB7185` (dark)                    | Error/hapus                        | ✅ Implemented |
+| Info           | Blue    | `#2563EB` (light) / `#60A5FA` (dark)                    | Badge listen/rule                  | ✅ Implemented |
+| Badge WhatsApp | Hijau   | `#25D366`                                               | Badge "connected" (konteks produk) | ✅ Implemented |
 
 > **Catatan desain:** Referensi `design.png` menunjukkan skema warna hijau tua/teal untuk brand "Slick". Implementasi wenderdotnet menggunakan Emerald (`#34D399`) sebagai primary — selaras dengan nuansa hijau WhatsApp produk.
 
@@ -523,16 +523,16 @@ Semua token di `src/app/globals.css` (`@theme inline`):
 | 9   | Rules = milik user (global), assignable ke banyak device                                                                                                                                        | ✅ Approved |
 | 10  | Pricing/billing ditunda (late)                                                                                                                                                                  | ✅ Approved |
 | 11  | Dark + light mode (keduanya)                                                                                                                                                                    | ✅ Approved |
-| 12  | Mood clean & professional; **Emerald** primary (`#34D399`) + slate neutral + semantic colors; **Inter** via `next/font/google`                                                                    | ✅ Approved |
+| 12  | Mood clean & professional; **Emerald** primary (`#34D399`) + slate neutral + semantic colors; **Inter** via `next/font/google`                                                                  | ✅ Approved |
 | 13  | Status device di-polling (3 detik) dari bot (`GET /devices/{id}/status`); upgrade WebSocket `/ws` nanti                                                                                         | ✅ Approved |
 | 14  | Bot service = image **`go-whatsapp-web-multidevice`** (API di `openapi.yaml`); device slot pakai `device_id`                                                                                    | ✅ Approved |
 | 15  | **Rule engine dijalankan di Next.js** (webhook receiver `/api/webhook/gowa`): verify HMAC → evaluasi rules → auto-reply via `POST /send/message` → tulis `logs`. Bot hanya kirim webhook events | ✅ Approved |
 | 16  | QR login = `qr_link` (URL) dari `GET /devices/{id}/login`; dirender via **proxy server-side** (Basic Auth); ada opsi pairing code                                                               | ✅ Approved |
-| 17  | Landing page (`/`) + auth gabung di `/auth` (split layout, tab Masuk/Daftar); route group `(marketing)` / `(auth)` / `(app)`; newsletter → tabel `newsletters` (insert publik)                    | ✅ Approved |
-| 18  | **Server actions hanya di `src/server/actions/`** (`"use server"`); file frontend tidak boleh berisi `"use server"` — cukup panggil method                                                               | ✅ Approved |
+| 17  | Landing page (`/`) + auth gabung di `/auth` (split layout, tab Masuk/Daftar); route group `(marketing)` / `(auth)` / `(app)`; newsletter → tabel `newsletters` (insert publik)                  | ✅ Approved |
+| 18  | **Server actions hanya di `src/server/actions/`** (`"use server"`); file frontend tidak boleh berisi `"use server"` — cukup panggil method                                                      | ✅ Approved |
 | 19  | Tailwind CSS v4 (tanpa config file); CSS custom properties sebagai design tokens; `@theme inline` untuk mapping ke utility classes                                                              | ✅ Approved |
 | 20  | React Compiler enabled via `babel-plugin-react-compiler` + `reactCompiler: true` di `next.config.ts`                                                                                            | ✅ Approved |
-| 21  | Middleware entry point: `src/proxy.ts` (bukan `middleware.ts` bawaan Next.js)                                                                                                                    | ✅ Approved |
+| 21  | Middleware entry point: `src/proxy.ts` (bukan `middleware.ts` bawaan Next.js)                                                                                                                   | ✅ Approved |
 | 22  | Toast notification pakai **sonner** (bukan sonner-as-toast atau library lain)                                                                                                                   | ✅ Approved |
 
 ---
@@ -543,55 +543,55 @@ Semua token di `src/app/globals.css` (`@theme inline`):
 
 ### 9.1 Fitur MVP — Status (diupdate 11 Sep 2026)
 
-| Fitur                         | Status         | Lokasi                              | Catatan                                           |
-| ----------------------------- | -------------- | ----------------------------------- | ------------------------------------------------- |
-| Auth (email + password)       | ✅ Implemented | `(auth)/auth/page.tsx`              | Login + Register, tab, `loading+disabled` + OAuth guard |
-| Auth (Google OAuth)           | ✅ Implemented | `(auth)/auth/page.tsx`              | `signInWithOAuth` → `/devices`, icon Google |
-| Route protection (middleware) | ✅ Implemented | `src/proxy.ts` + `lib/supabase/middleware.ts` | Protects `/devices`, `/logs`, `sitemap`/`robots` |
-| Landing page                  | ✅ Implemented | `(marketing)/page.tsx`              | Hero + `HeroPreview`, `#cara-pakai` 3 steps `rounded-sm`, `#fitur` `SectionFeature` centered SVG+light `blur-2xl rounded-sm max-w-[360px]` mobile `order-1` top, `#tentang`, `#newsletter`, Footer |
-| SEO                           | ✅ Implemented | `app/layout.tsx` + `sitemap.ts`/`robots.ts`/`icon.svg` | `metadataBase` `NEXT_PUBLIC_SITE_URL`, `title "%s: wenderdotnet"` colon, `openGraph/twitter` `/opengraph.png`, `robots` disallow `/api/` `/devices/` `/logs/` |
-| Legal pages                   | ✅ Implemented | `(marketing)/privacy` + `/terms`    | Header `py-14 lg:py-20`, grid `270px+1fr`, TOC `truncate whitespace-nowrap rounded-sm`, section `border-t pt-10` bernomor `01..09`, copy antislop, `rounded-sm` seragam, button `bg-primary` dark/light |
-| Navbar (marketing)            | ✅ Implemented | `components/navbar.tsx`             | Sticky, hamburger `rounded-sm cursor-pointer` |
-| Topbar (app)                  | ✅ Implemented | `components/topbar.tsx`             | `Devices/Logs`, logout `cursor-pointer active:scale` |
-| Theme toggle (dark/light)     | ✅ Implemented | `components/theme-toggle.tsx`       | `next-themes`, `rounded-sm cursor-pointer`, sun/moon |
-| Device list                   | ✅ Implemented | `(app)/devices/page.tsx`            | `rounded-sm` seragam, polling 5s visibility-aware 1 call, auto-close QR/kode, `Detail` link |
-| Device QR/Kode connect        | ✅ Implemented | `(app)/devices/page.tsx`            | Modal `rounded-sm animate-modal` tabs QR/Kode `rounded-sm`, `qr_link` / `pair_code`, `Copy/Check` |
-| Device detail                 | ✅ Implemented | `(app)/devices/[deviceId]/page.tsx` | Tabs `Overview/Webhook/Automasi` `rounded-sm`, group picker virtual 100, duplicate per `target_jid` |
-| Device Automasi               | ✅ Implemented | `/api/devices/[id]/automations`     | `trigger_category` prefix/contains/exact/regex, `is_reply`/`mentions`/`duration`/`is_forwarded`, `rounded-sm` forms |
-| Group picker                  | ✅ Implemented | `page.tsx` `GroupItem` | `GET /user/my/groups` 500 limit cache 30s, search debounce, `rounded-sm` |
-| Device delete                 | ✅ Implemented | `(app)/devices/page.tsx`            | `Modal rounded-sm` `loading+disabled` |
-| Rules (legacy)                | ❌ Removed     | `004` | DROP `rules`/`device_rules` → `device_automations` |
-| Logs timeline                 | ✅ Implemented | `(app)/logs/page.tsx`               | `rounded-sm` cards, filters `h-10 rounded-sm`, dot `rounded-full` blur, `loading+disabled` |
-| Newsletter                    | ✅ Implemented | `marketing/newsletter-form.tsx`     | `h-10 flex-1 rounded-sm` + `Button rounded-sm`, `zod` validasi |
-| GOWA proxy                    | ✅ Implemented | `lib/gowa.ts`                       | Basic Auth, `X-Device-Id` |
-| Webhook receiver              | ✅ Implemented | `api/webhook/gowa/route.ts`         | HMAC `X-Hub-Signature-256`, `session_id`→`device_key`, `chat_id` scope |
-| UI primitives                 | ✅ Implemented | `components/ui/`                     | `Button rounded-sm cursor-pointer active:scale`, `Input rounded-sm`, `Badge rounded-full`, `Modal rounded-sm`, `Toggle rounded-full` |
-| Design tokens                 | ✅ Implemented | `globals.css`                       | `--radius-sm 6px` seragam, `--shadow-*`, `@theme inline`, global cursor `active:scale-97` |
-| Supabase RLS                  | ✅ Implemented | `supabase/migrations/001-004`       | `user_owns_device`, grants `003` |
-| Comments cleanup              | ✅ Implemented | 11 Sep 2026 | Hapus `//` dan `{/* */}` + `{}` kosong, `privacy/terms` dikecualikan awal tapi sekarang dibersihkan, TOC `truncate` |
+| Fitur                         | Status         | Lokasi                                                 | Catatan                                                                                                                                                                                                 |
+| ----------------------------- | -------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Auth (email + password)       | ✅ Implemented | `(auth)/auth/page.tsx`                                 | Login + Register, tab, `loading+disabled` + OAuth guard                                                                                                                                                 |
+| Auth (Google OAuth)           | ✅ Implemented | `(auth)/auth/page.tsx`                                 | `signInWithOAuth` → `/devices`, icon Google                                                                                                                                                             |
+| Route protection (middleware) | ✅ Implemented | `src/proxy.ts` + `lib/supabase/middleware.ts`          | Protects `/devices`, `/logs`, `sitemap`/`robots`                                                                                                                                                        |
+| Landing page                  | ✅ Implemented | `(marketing)/page.tsx`                                 | Hero + `HeroPreview`, `#cara-pakai` 3 steps `rounded-sm`, `#fitur` `SectionFeature` centered SVG+light `blur-2xl rounded-sm max-w-[360px]` mobile `order-1` top, `#tentang`, `#newsletter`, Footer      |
+| SEO                           | ✅ Implemented | `app/layout.tsx` + `sitemap.ts`/`robots.ts`/`icon.svg` | `metadataBase` `NEXT_PUBLIC_SITE_URL`, `title "%s: wenderdotnet"` colon, `openGraph/twitter` `/opengraph.png`, `robots` disallow `/api/` `/devices/` `/logs/`                                           |
+| Legal pages                   | ✅ Implemented | `(marketing)/privacy` + `/terms`                       | Header `py-14 lg:py-20`, grid `270px+1fr`, TOC `truncate whitespace-nowrap rounded-sm`, section `border-t pt-10` bernomor `01..09`, copy antislop, `rounded-sm` seragam, button `bg-primary` dark/light |
+| Navbar (marketing)            | ✅ Implemented | `components/navbar.tsx`                                | Sticky, hamburger `rounded-sm cursor-pointer`                                                                                                                                                           |
+| Topbar (app)                  | ✅ Implemented | `components/topbar.tsx`                                | `Devices/Logs`, logout `cursor-pointer active:scale`                                                                                                                                                    |
+| Theme toggle (dark/light)     | ✅ Implemented | `components/theme-toggle.tsx`                          | `next-themes`, `rounded-sm cursor-pointer`, sun/moon                                                                                                                                                    |
+| Device list                   | ✅ Implemented | `(app)/devices/page.tsx`                               | `rounded-sm` seragam, polling 5s visibility-aware 1 call, auto-close QR/kode, `Detail` link                                                                                                             |
+| Device QR/Kode connect        | ✅ Implemented | `(app)/devices/page.tsx`                               | Modal `rounded-sm animate-modal` tabs QR/Kode `rounded-sm`, `qr_link` / `pair_code`, `Copy/Check`                                                                                                       |
+| Device detail                 | ✅ Implemented | `(app)/devices/[deviceId]/page.tsx`                    | Tabs `Overview/Webhook/Automasi` `rounded-sm`, group picker virtual 100, duplicate per `target_jid`                                                                                                     |
+| Device Automasi               | ✅ Implemented | `/api/devices/[id]/automations`                        | `trigger_category` prefix/contains/exact/regex, `is_reply`/`mentions`/`duration`/`is_forwarded`, `rounded-sm` forms                                                                                     |
+| Group picker                  | ✅ Implemented | `page.tsx` `GroupItem`                                 | `GET /user/my/groups` 500 limit cache 30s, search debounce, `rounded-sm`                                                                                                                                |
+| Device delete                 | ✅ Implemented | `(app)/devices/page.tsx`                               | `Modal rounded-sm` `loading+disabled`                                                                                                                                                                   |
+| Rules (legacy)                | ❌ Removed     | `004`                                                  | DROP `rules`/`device_rules` → `device_automations`                                                                                                                                                      |
+| Logs timeline                 | ✅ Implemented | `(app)/logs/page.tsx`                                  | `rounded-sm` cards, filters `h-10 rounded-sm`, dot `rounded-full` blur, `loading+disabled`                                                                                                              |
+| Newsletter                    | ✅ Implemented | `marketing/newsletter-form.tsx`                        | `h-10 flex-1 rounded-sm` + `Button rounded-sm`, `zod` validasi                                                                                                                                          |
+| GOWA proxy                    | ✅ Implemented | `lib/gowa.ts`                                          | Basic Auth, `X-Device-Id`                                                                                                                                                                               |
+| Webhook receiver              | ✅ Implemented | `api/webhook/gowa/route.ts`                            | HMAC `X-Hub-Signature-256`, `session_id`→`device_key`, `chat_id` scope                                                                                                                                  |
+| UI primitives                 | ✅ Implemented | `components/ui/`                                       | `Button rounded-sm cursor-pointer active:scale`, `Input rounded-sm`, `Badge rounded-full`, `Modal rounded-sm`, `Toggle rounded-full`                                                                    |
+| Design tokens                 | ✅ Implemented | `globals.css`                                          | `--radius-sm 6px` seragam, `--shadow-*`, `@theme inline`, global cursor `active:scale-97`                                                                                                               |
+| Supabase RLS                  | ✅ Implemented | `supabase/migrations/001-004`                          | `user_owns_device`, grants `003`                                                                                                                                                                        |
+| Comments cleanup              | ✅ Implemented | 11 Sep 2026                                            | Hapus `//` dan `{/* */}` + `{}` kosong, `privacy/terms` dikecualikan awal tapi sekarang dibersihkan, TOC `truncate`                                                                                     |
 
 ### 9.2 Fitur yang Belum Diimplementasi (dari Spec) — 11 Sep 2026
 
-| Fitur                          | Status           | Catatan                                                  |
-| ------------------------------ | ---------------- | -------------------------------------------------------- |
-| "Lupa password?" link          | ❌ Not in UI     | Belum ada di auth page; bisa via Supabase Auth |
-| Device role display            | ❌ Not in UI     | Kolom `role` ada di DB, tidak ditampilkan |
-| Zod validation                 | ✅ Partial       | `zod@4.5.4` dipakai di `newsletter-form.tsx`, belum di semua forms |
-| WebSocket realtime             | ⚠️ Partial       | Polling 5s + visibility-aware utama, WS `/ws` disiapkan fallback |
-| Rules assign (legacy)          | ✅ Implemented   | `device_automations` per-device di detail Automasi tab |
-| Pairing code login             | ✅ Implemented   | QR/Kode tabs `POST /login/code` di devices + detail |
+| Fitur                 | Status         | Catatan                                                            |
+| --------------------- | -------------- | ------------------------------------------------------------------ |
+| "Lupa password?" link | ❌ Not in UI   | Belum ada di auth page; bisa via Supabase Auth                     |
+| Device role display   | ❌ Not in UI   | Kolom `role` ada di DB, tidak ditampilkan                          |
+| Zod validation        | ✅ Partial     | `zod@4.5.4` dipakai di `newsletter-form.tsx`, belum di semua forms |
+| WebSocket realtime    | ⚠️ Partial     | Polling 5s + visibility-aware utama, WS `/ws` disiapkan fallback   |
+| Rules assign (legacy) | ✅ Implemented | `device_automations` per-device di detail Automasi tab             |
+| Pairing code login    | ✅ Implemented | QR/Kode tabs `POST /login/code` di devices + detail                |
 
 ### 9.3 Ketidaksesuaian Spec vs Implementasi
 
-| Item Spec                      | Implementasi Aktual                                      |
-| ------------------------------ | -------------------------------------------------------- |
-| Primary warna **Indigo** `#4F46E5` | Primary warna **Emerald** `#34D399` (lebih cocok untuk brand WhatsApp) |
-| Auth: "Lupa password?" link    | Tidak ada di UI                                           |
-| Device: "Settings" menu        | Tidak ada — hanya Connect/Disconnect/Delete               |
-| Device: "tanggal dibuat"       | Tidak ditampilkan; hanya nama + device ID                 |
-| Rules: "assign ke device"      | Tidak ada di UI (hanya ada di DB schema)                  |
-| Landing: "Intro singkat proyek" | Diganti menjadi "How it works" (3 langkah)              |
-| Landing: Hero preview          | Ditambahkan `HeroPreview` (mockup Devices screen) — tidak disebut di spec lama |
+| Item Spec                          | Implementasi Aktual                                                            |
+| ---------------------------------- | ------------------------------------------------------------------------------ |
+| Primary warna **Indigo** `#4F46E5` | Primary warna **Emerald** `#34D399` (lebih cocok untuk brand WhatsApp)         |
+| Auth: "Lupa password?" link        | Tidak ada di UI                                                                |
+| Device: "Settings" menu            | Tidak ada — hanya Connect/Disconnect/Delete                                    |
+| Device: "tanggal dibuat"           | Tidak ditampilkan; hanya nama + device ID                                      |
+| Rules: "assign ke device"          | Tidak ada di UI (hanya ada di DB schema)                                       |
+| Landing: "Intro singkat proyek"    | Diganti menjadi "How it works" (3 langkah)                                     |
+| Landing: Hero preview              | Ditambahkan `HeroPreview` (mockup Devices screen) — tidak disebut di spec lama |
 
 ### 9.4 Design Reference (`design.png`)
 

@@ -4,9 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 const CAPABILITIES = [
-  "Connect via QR, sama seperti WhatsApp Web",
-  "Auto-reply berbasis keyword dan regex",
-  "Log aktivitas lengkap untuk tiap device",
+  "Hubungkan via QR, sama seperti WhatsApp Web",
+  "Balasan otomatis berbasis kata kunci dan regex",
+  "Log aktivitas lengkap untuk tiap perangkat",
 ];
 
 export default async function AuthLayout({

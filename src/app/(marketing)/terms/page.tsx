@@ -352,7 +352,7 @@ export default function TermsPage() {
                   batasnya nol. Harap gunakan dengan pertimbangan matang.
                 </p>
                 <p>
-                  Anda dapat menghapus device kapan saja dari halaman Devices.
+                  Anda dapat menghapus perangkat kapan saja dari halaman Perangkat.
                   Akun dapat dihapus lewat Supabase Auth atau dengan menghubungi
                   kami. Ketentuan ini tunduk pada hukum Indonesia.
                 </p>
