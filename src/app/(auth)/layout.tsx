@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 const CAPABILITIES = [
   "Hubungkan via QR, sama seperti WhatsApp Web",
-  "Balasan otomatis berbasis kata kunci dan regex",
+  "Balasan otomatis multi-keyword dengan opsi case-sensitive",
   "Log aktivitas lengkap untuk tiap perangkat",
 ];
 

@@ -26,9 +26,10 @@ interface WebhookPayload {
 interface AutomationRow {
   id: string;
   enabled: boolean;
-  trigger_category: "prefix" | "contains" | "exact" | "regex";
-  trigger_type: "keyword" | "regex";
+  trigger_category: "prefix" | "contains" | "exact";
+  trigger_type: "keyword";
   pattern: string;
+  is_case_sensitive: boolean;
   reply: string;
   is_reply: boolean;
   mentions: string | null;
@@ -155,21 +156,22 @@ async function processMessageEvent(
     if (auto.target_jid && auto.target_jid !== from) continue;
 
     let matches = false;
-    const pat = auto.pattern ?? "";
-    const lowerText = text.toLowerCase();
-    const lowerPat = pat.toLowerCase();
-    if (auto.trigger_category === "prefix") matches = lowerText.startsWith(lowerPat);
-    else if (auto.trigger_category === "contains") matches = lowerText.includes(lowerPat);
-    else if (auto.trigger_category === "exact") matches = lowerText === lowerPat;
-    else if (auto.trigger_category === "regex" || auto.trigger_type === "regex") {
-      try {
-        const regex = new RegExp(pat, "i");
-        matches = regex.test(text);
-      } catch {}
-    } else {
-
-      matches = lowerText.includes(lowerPat);
-    }
+    const rawPattern = auto.pattern ?? "";
+    // multi-keyword: split by comma/newline, OR logic
+    const keywords = rawPattern
+      .split(/[,\n]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const isCaseSensitive = !!auto.is_case_sensitive;
+    const sourceText = isCaseSensitive ? text : text.toLowerCase();
+    const hit = (kw: string) => {
+      const pat = isCaseSensitive ? kw : kw.toLowerCase();
+      if (auto.trigger_category === "prefix") return sourceText.startsWith(pat);
+      if (auto.trigger_category === "exact") return sourceText === pat;
+      // contains default
+      return sourceText.includes(pat);
+    };
+    matches = keywords.length > 0 ? keywords.some(hit) : false;
     if (!matches) continue;
 
     try {

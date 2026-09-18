@@ -1,6 +1,6 @@
 # wenderdotnet
 
-Dashboard untuk mengelola bot WhatsApp multi-device: hubungkan beberapa nomor via QR atau kode pairing, atur automasi per-device (prefix / contains / exact / regex, balasan, mention, durasi, target grup/private), dan pantau semua aktivitas dari satu tempat. Fondasi monetisasi ditunda (MVP gratis).
+Dashboard untuk mengelola bot WhatsApp multi-device: hubungkan beberapa nomor via QR atau kode pairing, atur automasi per-device (prefix / contains / exact + multi-keyword, balasan, mention, durasi, target grup/private, opsi case-sensitive), dan pantau semua aktivitas dari satu tempat. Fondasi monetisasi ditunda (MVP gratis).
 
 Dibangun dengan Next.js 16.3.4 (App Router), React 19.2, TypeScript 7, Tailwind CSS v4 (tokens di `globals.css`), Supabase (Auth + Postgres + RLS) dan container bot eksternal `go-whatsapp-web-multidevice:v9.2.2` via `podman compose`.
 
@@ -9,7 +9,7 @@ Dibangun dengan Next.js 16.3.4 (App Router), React 19.2, TypeScript 7, Tailwind 
 - **Auth** email + password + Google OAuth (Supabase Auth, `src/app/auth/callback/route.ts`)
 - **Devices** multi-nomor: tambah, list, status live, hapus, detail per-device
 - **Koneksi** QR (`GET /devices/:id/login` → `qr_link`) dan kode pairing (`POST /devices/:id/login/code` → `pair_code`), polling 5s per-device + visibility-aware, auto-close modal saat `logged_in`
-- **Automasi per-device** (`device_automations`): `trigger_category` prefix/contains/exact/regex, `is_reply` / `mentions` (@everyone) / `duration` / `is_forwarded`, target `group`/`private`/`semua`, group picker lewat `GET /user/my/groups` (X-Device-Id, cache 30s, virtual 100)
+- **Automasi per-device** (`device_automations`): `trigger_category` prefix/contains/exact (multi-keyword comma-separated, OR logic) + `is_case_sensitive`, `is_reply` / `mentions` (@everyone) / `duration` / `is_forwarded`, target `group`/`private`/`semua`, group picker lewat `GET /user/my/groups` (X-Device-Id, cache 30s, virtual 100)
 - **Logs** timeline dengan filter device dan event, vertical line + dot, polling per-device
 - **Landing** hero, 3 langkah cara pakai, 3 fitur alternating `SectionFeature` (visual terpusat dengan light blur, mobile selalu visual di atas teks), quote kreator, newsletter
 - **Legal** `/privacy` dan `/terms` dengan layout lega, TOC sticky 270px `truncate whitespace-nowrap`, section bernomor, spacing `border-t pt-10`, copy antislop, `rounded-sm` seragam, tombol `bg-primary` yang aman di dark/light

@@ -34,9 +34,10 @@ export interface DeviceAutomation {
   user_id: string;
   device_key: string;
   name: string;
-  trigger_category: "prefix" | "contains" | "exact" | "regex";
-  trigger_type: "keyword" | "regex";
+  trigger_category: "prefix" | "contains" | "exact";
+  trigger_type: "keyword";
   pattern: string;
+  is_case_sensitive: boolean;
   reply: string;
   is_reply: boolean;
   mentions: string | null;
@@ -56,7 +57,7 @@ export interface Rule {
   action_type: "listen" | "auto_reply";
   target_type: "group" | "private" | null;
   target_jid: string | null;
-  trigger_type: "keyword" | "regex" | null;
+  trigger_type: "keyword" | null;
   pattern: string | null;
   reply: string | null;
   auto_read: boolean;

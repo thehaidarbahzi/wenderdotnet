@@ -159,9 +159,6 @@ export default function LandingPage() {
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-sm bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
                     {step.icon}
                   </div>
-                  <span className="font-mono text-xs text-primary">
-                    0{i + 1}
-                  </span>
                   <h3 className="mt-1.5 font-semibold text-text-primary">
                     {step.title}
                   </h3>
@@ -207,7 +204,7 @@ export default function LandingPage() {
               reversed
               title="Balasan otomatis yang bisa dikontrol"
               description="
-                Buat aturan berbasis kata kunci atau pola regex, arahkan ke grup atau
+                Buat aturan berbasis multi-keyword (pisah koma, salah satu cocok langsung balas) dengan opsi case-sensitive, arahkan ke grup atau
                 chat pribadi tertentu. Balasan terkirim otomatis saat Anda
                 tidak bisa memegang ponsel."
               ctaLabel="Coba aturan balasan otomatis"

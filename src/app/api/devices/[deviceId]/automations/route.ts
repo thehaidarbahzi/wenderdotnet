@@ -47,8 +47,8 @@ export async function POST(
   const {
     name,
     trigger_category = "contains",
-    trigger_type,
     pattern,
+    is_case_sensitive = false,
     reply,
     is_reply = false,
     mentions,
@@ -60,9 +60,9 @@ export async function POST(
     enabled = true,
   } = body as {
     name?: string;
-    trigger_category?: "prefix" | "contains" | "exact" | "regex";
-    trigger_type?: "keyword" | "regex";
+    trigger_category?: "prefix" | "contains" | "exact";
     pattern?: string;
+    is_case_sensitive?: boolean;
     reply?: string;
     is_reply?: boolean;
     mentions?: string;
@@ -78,7 +78,30 @@ export async function POST(
     return NextResponse.json({ error: "name, pattern, reply wajib diisi" }, { status: 400 });
   }
 
-  const derivedTriggerType = trigger_type ?? (trigger_category === "regex" ? "regex" : "keyword");
+  const allowedCategories = ["prefix", "contains", "exact"] as const;
+  if (!allowedCategories.includes(trigger_category as (typeof allowedCategories)[number])) {
+    return NextResponse.json({ error: "trigger_category harus prefix/contains/exact" }, { status: 400 });
+  }
+
+  // multi-keyword: split by comma/newline, validate
+  const keywords = pattern
+    .split(/[,\n]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (keywords.length === 0) {
+    return NextResponse.json({ error: "Minimal 1 keyword wajib diisi" }, { status: 400 });
+  }
+  if (keywords.length > 10) {
+    return NextResponse.json({ error: "Maksimal 10 keyword per automasi" }, { status: 400 });
+  }
+  for (const kw of keywords) {
+    if (kw.length > 50) return NextResponse.json({ error: `Keyword "${kw.slice(0, 20)}" terlalu panjang (max 50)` }, { status: 400 });
+    if (kw.length < 1) return NextResponse.json({ error: "Keyword tidak boleh kosong" }, { status: 400 });
+  }
+  // normalize pattern: join dengan ", " untuk konsistensi
+  const normalizedPattern = keywords.join(", ");
+
+  const derivedTriggerType = "keyword" as const;
   const allowedDurations = [0, 86400, 604800, 7776000];
   if (!allowedDurations.includes(duration)) {
     return NextResponse.json({ error: "duration tidak valid" }, { status: 400 });
@@ -95,7 +118,8 @@ export async function POST(
     name: jids.length > 1 ? `${name}: ${jid}` : name,
     trigger_category,
     trigger_type: derivedTriggerType,
-    pattern,
+    pattern: normalizedPattern,
+    is_case_sensitive: !!is_case_sensitive,
     reply,
     is_reply,
     mentions: mentions || null,

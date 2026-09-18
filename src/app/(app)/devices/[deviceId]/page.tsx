@@ -21,7 +21,6 @@ import {
   Plus,
   Pencil,
   AtSign,
-  AlertTriangle,
   Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -85,6 +84,7 @@ export default function DeviceDetailPage() {
     name: "",
     trigger_category: "contains" as DeviceAutomation["trigger_category"],
     pattern: "",
+    is_case_sensitive: false,
     reply: "",
     is_reply: false,
     mentions: "",
@@ -93,6 +93,8 @@ export default function DeviceDetailPage() {
     target_type: "" as "" | "group" | "private",
     target_jids: [] as string[],
   });
+
+  const [keywordInput, setKeywordInput] = useState("");
 
   const [groups, setGroups] = useState<GroupItem[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
@@ -313,6 +315,7 @@ export default function DeviceDetailPage() {
         name: auto.name,
         trigger_category: auto.trigger_category,
         pattern: auto.pattern,
+        is_case_sensitive: (auto as unknown as { is_case_sensitive?: boolean }).is_case_sensitive ?? false,
         reply: auto.reply,
         is_reply: auto.is_reply,
         mentions: auto.mentions || undefined,
@@ -379,9 +382,29 @@ export default function DeviceDetailPage() {
 
   const saveAutomation = async () => {
     if (autoSaving) return;
+    // flush pending keywordInput jika ada
+    let effectivePattern = autoForm.pattern;
+    const pendingKw = keywordInput.trim().replace(/,+$/, "");
+    if (pendingKw) {
+      const existing = effectivePattern
+        .split(/[,\n]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (!existing.includes(pendingKw) && existing.length < 10 && pendingKw.length <= 50) {
+        effectivePattern = [...existing, pendingKw].join(", ");
+        setAutoForm((prev) => ({ ...prev, pattern: effectivePattern }));
+        setKeywordInput("");
+      }
+    }
+    const keywords = effectivePattern
+      .split(/[,\n]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
     const errs: Record<string, string> = {};
     if (!autoForm.name.trim()) errs.name = "Nama wajib diisi";
-    if (!autoForm.pattern.trim()) errs.pattern = "Pola wajib diisi";
+    if (keywords.length === 0) errs.pattern = "Minimal 1 keyword wajib diisi";
+    else if (keywords.length > 10) errs.pattern = "Maksimal 10 keyword";
+    else if (keywords.some((k) => k.length > 50)) errs.pattern = "Keyword max 50 karakter";
     if (!autoForm.reply.trim()) errs.reply = "Balasan wajib diisi";
     if (autoForm.target_type === "group" && autoForm.target_jids.length === 0)
       errs.target = "Pilih minimal satu grup";
@@ -398,7 +421,8 @@ export default function DeviceDetailPage() {
       const payload = {
         name: autoForm.name.trim(),
         trigger_category: autoForm.trigger_category,
-        pattern: autoForm.pattern.trim(),
+        pattern: keywords.join(", "),
+        is_case_sensitive: autoForm.is_case_sensitive,
         reply: autoForm.reply,
         is_reply: autoForm.is_reply,
         mentions: autoForm.mentions.trim() || undefined,
@@ -796,6 +820,7 @@ export default function DeviceDetailPage() {
                     name: "",
                     trigger_category: "contains",
                     pattern: "",
+                    is_case_sensitive: false,
                     reply: "",
                     is_reply: false,
                     mentions: "",
@@ -804,6 +829,7 @@ export default function DeviceDetailPage() {
                     target_type: "",
                     target_jids: [],
                   });
+                  setKeywordInput("");
                   setAutoErrors({});
                   setAutoStep(1);
                   setAutoModal(true);
@@ -868,8 +894,7 @@ export default function DeviceDetailPage() {
           ) : automations.length === 0 ? (
             <div className="rounded-sm border border-dashed border-border p-8 text-center">
               <p className="text-sm text-text-muted">
-                Belum ada automasi. Klik Tambah untuk membuat. Pemicu: awalan /
-                mengandung / sama persis / regex, lalu balasan.
+                Belum ada automasi untuk perangkat ini. Buat yang pertama, atur kata pemicu dan isi balasannya.
               </p>
               <Button
                 variant="secondary"
@@ -924,12 +949,32 @@ export default function DeviceDetailPage() {
                           <span className="rounded-sm bg-surface-subtle px-2 py-0.5 font-mono text-xs text-text-muted border border-border">
                             {a.trigger_category}
                           </span>
+                          {(a as unknown as { is_case_sensitive?: boolean }).is_case_sensitive && (
+                            <span className="rounded-sm bg-amber-50 border border-amber-200 px-2 py-0.5 font-mono text-xs text-amber-700 dark:bg-amber-950/30 dark:border-amber-900/30 dark:text-amber-300" title="Case-sensitive">
+                              Aa
+                            </span>
+                          )}
                         </div>
                         <div className="rounded-sm bg-surface-subtle border border-border p-3">
-                          <p className="font-mono text-xs text-text-secondary">
-                            <span className="text-text-muted">Pemicu:</span> “
-                            {a.pattern}”
-                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {(a.pattern || "")
+                              .split(/[,\n]+/)
+                              .map((s) => s.trim())
+                              .filter(Boolean)
+                              .map((kw) => (
+                                <span
+                                  key={kw}
+                                  className="inline-flex items-center rounded-full bg-surface border border-border px-2.5 py-0.5 font-mono text-xs text-text-secondary"
+                                >
+                                  {kw}
+                                </span>
+                              ))}
+                            {(a as unknown as { is_case_sensitive?: boolean }).is_case_sensitive && (
+                              <span className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                                case-sensitive
+                              </span>
+                            )}
+                          </div>
                           <p className="mt-2 text-sm leading-relaxed text-text-primary">
                             “{a.reply.slice(0, 80)}
                             {a.reply.length > 80 ? "…" : ""}”
@@ -983,6 +1028,7 @@ export default function DeviceDetailPage() {
                               name: a.name,
                               trigger_category: a.trigger_category,
                               pattern: a.pattern,
+                              is_case_sensitive: (a as unknown as { is_case_sensitive?: boolean }).is_case_sensitive ?? false,
                               reply: a.reply,
                               is_reply: a.is_reply,
                               mentions: a.mentions ?? "",
@@ -993,6 +1039,7 @@ export default function DeviceDetailPage() {
                                 "",
                               target_jids: a.target_jid ? [a.target_jid] : [],
                             });
+                            setKeywordInput("");
                             setAutoErrors({});
                             setAutoStep(1);
                             setAutoModal(true);
@@ -1078,64 +1125,154 @@ export default function DeviceDetailPage() {
                   className="h-10 w-full rounded-sm border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                 >
                   <option value="prefix">Awalan: pesan diawali ini</option>
-                  <option value="contains">
-                    Mengandung: muncul di mana saja
-                  </option>
+                  <option value="contains">Mengandung: muncul di mana saja</option>
                   <option value="exact">Sama persis: harus cocok persis</option>
-                  <option value="regex">Regex: pola lanjutan</option>
                 </select>
                 <p className="text-xs leading-relaxed text-text-muted">
                   {autoForm.trigger_category === "contains"
-                    ? "Paling aman untuk pemula. Pola promo cocok dengan “ada promo?”"
+                    ? "Cocok jika keyword muncul di mana saja. Pesan “ada promo?” akan memicu balasan untuk keyword “promo”."
                     : autoForm.trigger_category === "prefix"
-                      ? "Hanya jika pesan diawali itu. “harga” cocok dengan “harga berapa” tapi tidak dengan “berapa harga”."
-                      : autoForm.trigger_category === "exact"
-                        ? "Harus cocok persis, tanpa kata tambahan."
-                        : "Pola regex. Kosongkan jika ragu."}
+                      ? "Balas hanya jika pesan diawali keyword tersebut. “harga berapa” cocok, “berapa harga” tidak."
+                      : "Balas hanya jika pesan sama persis dengan salah satu keyword. “harga” tidak cocok dengan “harga berapa”."}
                 </p>
               </div>
-              {autoForm.trigger_category === "regex" && (
-                <div className="rounded-sm border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/30 dark:bg-amber-950/20 flex gap-3">
-                  <AlertTriangle
-                    className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5"
-                    aria-hidden
-                  />
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
-                      Fitur lanjutan: regex
-                    </p>
-                    <p className="text-xs leading-relaxed text-amber-700 dark:text-amber-200/80">
-                      Salah tulis bisa membuat automasi tidak terpicu atau
-                      membalas semua chat. Coba “mengandung” dulu jika ragu. Uji
-                      pola di regex101 sebelum disimpan.
-                    </p>
-                  </div>
-                </div>
-              )}
               <div className="space-y-3">
-                <Input
-                  label="Pola pemicu *"
-                  placeholder={
-                    autoForm.trigger_category === "prefix"
-                      ? "price"
-                      : autoForm.trigger_category === "exact"
-                        ? "hello"
-                        : autoForm.trigger_category === "regex"
-                          ? "^hello.*"
-                          : "promo"
-                  }
-                  value={autoForm.pattern}
-                  onChange={(e) => {
-                    setAutoForm({ ...autoForm, pattern: e.target.value });
-                    if (autoErrors.pattern)
-                      setAutoErrors((prev) => ({ ...prev, pattern: "" }));
-                  }}
-                  error={autoErrors.pattern}
-                />
-                <p className="text-xs text-text-muted">
-                  Frasa pendek. Hindari satu huruf seperti a.
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Keyword pemicu *</label>
+                  <span className="text-xs font-mono text-text-muted border border-border bg-surface-subtle rounded-full px-2 py-0.5">
+                    {autoForm.pattern.split(/[,\n]+/).filter((s) => s.trim()).length}/10
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={keywordInput}
+                    onChange={(e) => setKeywordInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const raw = keywordInput.trim();
+                        if (!raw) return;
+                        const kws = raw
+                          .split(/[,\n]+/)
+                          .map((s) => s.trim())
+                          .filter(Boolean);
+                        const existing = autoForm.pattern
+                          .split(/[,\n]+/)
+                          .map((s) => s.trim())
+                          .filter(Boolean);
+                        const merged = Array.from(new Set([...existing, ...kws])).slice(0, 10);
+                        if (merged.length === existing.length && kws.length > 0 && existing.includes(kws[0])) {
+                          toast.error("Keyword sudah ada");
+                          setKeywordInput("");
+                          return;
+                        }
+                        if (existing.length + kws.length > 10) toast.error("Maksimal 10 keyword");
+                        if (kws.some((k) => k.length > 50)) { toast.error("Keyword max 50 karakter"); return; }
+                        setAutoForm({ ...autoForm, pattern: merged.join(", ") });
+                        setKeywordInput("");
+                        if (autoErrors.pattern) setAutoErrors((prev) => ({ ...prev, pattern: "" }));
+                      }
+                    }}
+                    placeholder={
+                      autoForm.trigger_category === "prefix"
+                        ? "Contoh: harga"
+                        : autoForm.trigger_category === "exact"
+                          ? "Contoh: hello"
+                          : "Contoh: promo"
+                    }
+                    className={`h-10 flex-1 rounded-sm border bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary ${autoErrors.pattern ? "border-error" : "border-border"}`}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-10 shrink-0 rounded-sm px-4"
+                    onClick={() => {
+                      const raw = keywordInput.trim();
+                      if (!raw) {
+                        if (!autoForm.pattern.trim()) toast.error("Ketik keyword dulu");
+                        return;
+                      }
+                      const kws = raw
+                        .split(/[,\n]+/)
+                        .map((s) => s.trim())
+                        .filter(Boolean);
+                      const existing = autoForm.pattern
+                        .split(/[,\n]+/)
+                        .map((s) => s.trim())
+                        .filter(Boolean);
+                      if (kws.length === 0) return;
+                      if (kws.some((k) => k.length > 50)) { toast.error("Keyword max 50 karakter"); return; }
+                      const merged = Array.from(new Set([...existing, ...kws])).slice(0, 10);
+                      if (existing.length >= 10) { toast.error("Maksimal 10 keyword"); return; }
+                      setAutoForm({ ...autoForm, pattern: merged.join(", ") });
+                      setKeywordInput("");
+                      if (autoErrors.pattern) setAutoErrors((prev) => ({ ...prev, pattern: "" }));
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Tambah
+                  </Button>
+                </div>
+                <p className="text-xs leading-relaxed text-text-muted">
+                  Tekan Enter atau klik Tambah untuk menyimpan. Tempel beberapa kata dipisah koma, contoh harga, price, biaya, lalu Enter.
                 </p>
+                {(() => {
+                  const kws = autoForm.pattern.split(/[,\n]+/).map((s) => s.trim()).filter(Boolean);
+                  if (kws.length === 0) return null;
+                  return (
+                    <div className="rounded-sm border border-border bg-surface-subtle/50 p-3 space-y-2">
+                      <p className="text-xs font-medium text-text-muted">
+                        {kws.length} keyword. Salah satu cocok, pesan dibalas
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {kws.map((kw) => (
+                          <span
+                            key={kw}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-surface border border-border px-3 py-1 text-xs font-medium text-text-primary shadow-sm"
+                          >
+                            {kw}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const filtered = kws.filter((x) => x !== kw);
+                                setAutoForm({ ...autoForm, pattern: filtered.join(", ") });
+                              }}
+                              className="grid h-4 w-4 place-items-center rounded-full bg-surface-subtle border border-border hover:bg-error/10 hover:text-error hover:border-error/20 ml-1"
+                              aria-label={`Hapus ${kw}`}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAutoForm({ ...autoForm, pattern: "" })}
+                        className="text-xs text-text-muted hover:text-error underline"
+                      >
+                        Hapus semua
+                      </button>
+                    </div>
+                  );
+                })()}
+                {autoErrors.pattern && <p className="text-xs text-error">{autoErrors.pattern}</p>}
               </div>
+              <label className="flex items-start gap-3 rounded-sm border border-border bg-surface p-3 cursor-pointer hover:bg-surface-subtle transition-colors">
+                <input
+                  type="checkbox"
+                  checked={autoForm.is_case_sensitive}
+                  onChange={(e) => setAutoForm({ ...autoForm, is_case_sensitive: e.target.checked })}
+                  className="mt-1 h-4 w-4 rounded-sm border-border text-primary focus:ring-primary/30"
+                />
+                <span className="text-sm leading-snug">
+                  <span className="font-medium flex items-center gap-1.5">
+                    Bedakan huruf besar dan kecil <span className="rounded-sm bg-surface-subtle border border-border px-1.5 py-0.5 font-mono text-xs">Aa</span>
+                  </span>
+                  <span className="text-xs text-text-muted block mt-1">
+                    Jika aktif, “Harga” tidak akan cocok dengan “harga”. Matikan untuk mengabaikan perbedaan huruf.
+                  </span>
+                </span>
+              </label>
             </div>
           )}
 
@@ -1425,7 +1562,8 @@ export default function DeviceDetailPage() {
                     <span className="font-medium text-text-primary">
                       Trigger:
                     </span>{" "}
-                    {autoForm.trigger_category} “{autoForm.pattern || "-"}”
+                    {autoForm.trigger_category} “{autoForm.pattern || "-"}”{" "}
+                    {autoForm.is_case_sensitive ? "(case-sensitive)" : "(case-insensitive)"}
                   </p>
                   <p>
                     <span className="font-medium text-text-primary">
@@ -1464,11 +1602,31 @@ export default function DeviceDetailPage() {
               {autoStep < 4 ? (
                 <Button
                   onClick={() => {
+                    // flush keywordInput yang belum di-Enter
+                    let currentPattern = autoForm.pattern;
+                    const pending = keywordInput.trim().replace(/,+$/, "");
+                    if (autoStep === 2 && pending) {
+                      const existing = currentPattern
+                        .split(/[,\n]+/)
+                        .map((s) => s.trim())
+                        .filter(Boolean);
+                      if (!existing.includes(pending) && existing.length < 10 && pending.length <= 50) {
+                        currentPattern = [...existing, pending].join(", ");
+                        setAutoForm({ ...autoForm, pattern: currentPattern });
+                        setKeywordInput("");
+                      }
+                    }
+                    const kws = currentPattern
+                      .split(/[,\n]+/)
+                      .map((s) => s.trim())
+                      .filter(Boolean);
                     const nextErrors: Record<string, string> = {};
                     if (autoStep === 1 && !autoForm.name.trim())
                       nextErrors.name = "Nama wajib diisi";
-                    if (autoStep === 2 && !autoForm.pattern.trim())
-                      nextErrors.pattern = "Pola wajib diisi";
+                    if (autoStep === 2) {
+                      if (kws.length === 0) nextErrors.pattern = "Minimal 1 keyword wajib diisi";
+                      else if (kws.length > 10) nextErrors.pattern = "Maksimal 10 keyword";
+                    }
                     if (
                       autoStep === 3 &&
                       autoForm.target_type === "group" &&
